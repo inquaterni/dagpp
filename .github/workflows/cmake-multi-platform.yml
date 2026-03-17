@@ -107,7 +107,7 @@ jobs:
                 uses: Schneegans/dynamic-badges-action@v1.7.0
                 with:
                     auth: ${{ secrets.GIST_SECRET }}
-                    gistID: 659b74483a5f3c2f917da4678ef3c733
+                    gistID: a959a29ceba525fc38f427725e75b15f
                     filename: coverage.json
                     label: coverage
                     color: ${{ steps.coverage.outputs.percent > 80 && 'green' || steps.coverage.outputs.percent > 60 && 'yellow' || 'red' }}
