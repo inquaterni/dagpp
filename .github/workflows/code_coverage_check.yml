@@ -43,6 +43,10 @@ jobs:
           --filter 'include/' \
           --exclude-unreachable-branches \
           --xml-pretty -o coverage.xml
+          
+          sed "s|${{ github.workspace }}/||g" coverage_raw.xml > coverage.xml
+          
+          head -n 20 coverage.xml
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
