@@ -43,7 +43,7 @@ jobs:
           echo "Coverage is $COVERAGE%"
           echo "percent=$COVERAGE" >> $GITHUB_OUTPUT
 
-      - name: Update Gist via Curl
+      - name: Update gist via cURL
         env:
           GIST_TOKEN: ${{ secrets.GIST_SECRET }}
           GIST_ID: a959a29ceba525fc38f427725e75b15f
@@ -61,6 +61,6 @@ jobs:
             curl -L -X PATCH \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer $GIST_TOKEN" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              -d "$(jq -nc --arg content "$BADGE_JSON" '{"files": {"coverage.json": {"content": $content}}}')" \
-              "https://api.github.com/gists/$GIST_ID"
+              -H "X-GitHub-Api-Version: 2026-03-10" \
+              https://api.github.com/gists/$GIST_ID \
+              -d "$(jq -nc --arg content "$BADGE_JSON" '{"files": {"coverage.json": {"content": $content}}}')"
