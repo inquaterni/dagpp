@@ -14,7 +14,7 @@
 
 namespace dagpp {
     template<typename T>
-    concept node = std::is_trivial_v<T>;
+    concept node = std::semiregular<T>;
     template<node TNode>
     class digraph_builder;
     template<node TNode, typename ...TExtension>

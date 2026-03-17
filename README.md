@@ -1,6 +1,6 @@
 # dag++
 
-A lightweight, fast, and cache-friendly C++23 directed graph library.
+A lightweight, fast, and cache-friendly C++23 directed graph manipulation library.
 
 ## Features
 
@@ -36,7 +36,7 @@ cd build && ctest --output-on-failure
 
 
 // Node data
-// NOTE: as of now node type MUST be trivial.
+// NOTE: as of now node type MUST be semiregular.
 struct my_node {
     int id;
 };
