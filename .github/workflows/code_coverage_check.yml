@@ -42,7 +42,7 @@ jobs:
           --gcov-executable gcov-14 \
           --filter 'include/' \
           --exclude-unreachable-branches \
-          --xml-pretty -o coverage.xml
+          --xml-pretty -o coverage_raw.xml
           
           sed "s|${{ github.workspace }}/||g" coverage_raw.xml > coverage.xml
           
