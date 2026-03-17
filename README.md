@@ -2,6 +2,12 @@
 
 A simple and fast C++23 directed graph library.
 
+![C++23](https://img.shields.io/badge/C%2B%2B-23-blue?logo=c%2B%2B)
+![CMake](https://img.shields.io/badge/CMake-3.31%2B-064F8C?logo=cmake)
+![License: MIT](https://img.shields.io/badge/License-MIT-green)
+![CI](https://github.com/inquaterni/dagpp/actions/workflows/cmake-multi-platform.yml/badge.svg)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/inquaterni/659b74483a5f3c2f917da4678ef3c733/raw/coverage.json)
+
 ---
 
 ## Table of Contents
