@@ -38,7 +38,14 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          gcovr -r . --gcov-executable gcov-14 -e ".*_deps.*" --xml coverage.xml
+          gcovr --root . ./build \
+          --gcov-executable gcov-14 \
+          --filter 'include/' \
+          --filter 'src/' \
+          --exclude '.*_deps.*' \
+          --exclude-unreachable-branches \
+          --exclude-throw-branches \
+          --xml-pretty -o coverage.xml
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
