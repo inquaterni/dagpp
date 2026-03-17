@@ -5,8 +5,6 @@
 #ifndef DAGPP_DIRECTED_GRAPH_H
 #define DAGPP_DIRECTED_GRAPH_H
 #include <expected>
-#include <limits>
-#include <optional>
 #include <queue>
 #include <span>
 #include <string>
@@ -23,11 +21,11 @@ namespace dagpp {
     using nodeid_t = std::size_t;
     using edgeid_t = std::size_t;
 
-
     template<node TNode>
     class digraph_builder {
     public:
-        constexpr nodeid_t add_node(TNode node);
+        constexpr nodeid_t add_node(TNode &node);
+        constexpr nodeid_t add_node(TNode &&node);
         constexpr void add_edge(nodeid_t from, nodeid_t to);
         constexpr void reserve_nodes(std::size_t n);
         constexpr void reserve_edges(std::size_t n);
@@ -105,8 +103,14 @@ namespace dagpp {
     }
 
     template<node TNode>
-    constexpr nodeid_t digraph_builder<TNode>::add_node(TNode node) {
+    constexpr nodeid_t digraph_builder<TNode>::add_node(TNode &node) {
         m_nodes.emplace_back(node);
+        return m_nodes.size() - 1;
+    }
+
+    template<node TNode>
+    constexpr nodeid_t digraph_builder<TNode>::add_node(TNode &&node) {
+        m_nodes.emplace_back(std::forward<TNode>(node));
         return m_nodes.size() - 1;
     }
 
@@ -185,6 +189,18 @@ namespace dagpp {
         }
         return queue.size() == n;
     }
+
+    struct outbound {
+        constexpr auto operator()(const auto &g, nodeid_t node) const {
+            return g.out_edges(node);
+        }
+    };
+
+    struct inbound {
+        constexpr auto operator()(const auto &g, nodeid_t node) const {
+            return g.in_edges(node);
+        }
+    };
 } // dagpp
 
 #endif //DAGPP_DIRECTED_GRAPH_H

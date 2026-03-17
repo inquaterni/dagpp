@@ -13,14 +13,14 @@
 namespace dagpp::ext {
     class dot_exporter {
     public:
-        template<typename TSelf, typename Pred>
+        template<typename TDir = outbound, typename TSelf, typename Pred>
         requires std::invocable<Pred, std::size_t, typename TSelf::node_t> &&
              std::convertible_to<std::invoke_result_t<Pred, std::size_t, typename TSelf::node_t>, std::string>
-        void to_dot(this const TSelf &self, const Pred& label_pred, std::ofstream &out) {
+        constexpr void to_dot(this const TSelf &self, const Pred& label_pred, std::ofstream &out, TDir cmp = TDir {}) {
             out << "digraph G {\n";
             for (nodeid_t i = 0; i < self.count(); ++i) {
                 out << label_pred(i, self.node(i));
-                const auto edges = self.out_edges(i);
+                const auto edges = cmp(self, i);
                 if (!edges) continue;
 
                 for (const auto &target : *edges) {

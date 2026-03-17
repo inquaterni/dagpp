@@ -4,7 +4,7 @@
 #include <iostream>
 #include "../include/digraph.h"
 #include "../include/topo_sort.h"
-#include "../include/ext.h" // Optional: for DOT export
+#include "../include/dot.h" // Optional: for DOT export
 #include "gtest/gtest.h"
 
 

@@ -3,10 +3,10 @@
 //
 #include <gtest/gtest.h>
 #include "../include/digraph.h"
-#include "../include/ext.h"
+#include "../include/dot.h"
 #include "global.h"
 
-TEST(dot_exporter_test, empty_graph) {
+TEST(dot_exporter_test, empty_graph_outbound) {
     dagpp::digraph_builder<test_node> builder;
     const auto graph = builder.compile<dagpp::ext::dot_exporter>();
     auto out = std::ofstream("test.dot");
@@ -29,7 +29,30 @@ TEST(dot_exporter_test, empty_graph) {
     in.close();
     std::filesystem::remove("test.dot");
 }
-TEST(dot_exporter_test, diamond_graph) {
+TEST(dot_exporter_test, empty_graph_inbound) {
+    dagpp::digraph_builder<test_node> builder;
+    const auto graph = builder.compile<dagpp::ext::dot_exporter>();
+    auto out = std::ofstream("test.dot");
+    ASSERT_TRUE(out.is_open());
+
+    graph.to_dot<dagpp::inbound>([] (const std::size_t i, const test_node &node){
+        return std::format("\tn{} [label=\"{}\"];\n", i, node.value);
+    }, out);
+
+    out.close();
+
+    ASSERT_TRUE(std::filesystem::exists("test.dot"));
+    std::ifstream in("test.dot");
+    ASSERT_TRUE(in.is_open());
+
+    const std::string content((std::istreambuf_iterator(in)),
+                               std::istreambuf_iterator<char>());
+    EXPECT_EQ(content, "digraph G {\n}\n");
+
+    in.close();
+    std::filesystem::remove("test.dot");
+}
+TEST(dot_exporter_test, diamond_graph_outbound) {
     // A -> B, A -> C, B -> D, C -> D
     dagpp::digraph_builder<test_node> builder;
     const auto a = builder.add_node({});
@@ -69,4 +92,45 @@ TEST(dot_exporter_test, diamond_graph) {
 
     in.close();
     std::filesystem::remove("test.dot");
+}
+
+TEST(dot_exporter_test, diamond_graph_inbound) {
+    // A -> B, A -> C, B -> D, C -> D
+    dagpp::digraph_builder<test_node> builder;
+    const auto a = builder.add_node({});
+    const auto b = builder.add_node({1});
+    const auto c = builder.add_node({2});
+    const auto d = builder.add_node({3});
+    builder.add_edge(a, b);
+    builder.add_edge(a, c);
+    builder.add_edge(b, d);
+    builder.add_edge(c, d);
+    const auto graph = builder.compile<dagpp::ext::dot_exporter>();
+    auto out = std::ofstream("test.dot");
+    ASSERT_TRUE(out.is_open());
+
+    graph.to_dot<dagpp::inbound>([] (const std::size_t i, const test_node &node){
+        return std::format("\tn{} [label=\"{}\"];\n", i, node.value);
+    }, out);
+
+    out.close();
+
+    ASSERT_TRUE(std::filesystem::exists("test.dot"));
+    std::ifstream in("test.dot");
+    ASSERT_TRUE(in.is_open());
+
+    const std::string content((std::istreambuf_iterator(in)),
+                               std::istreambuf_iterator<char>());
+    EXPECT_EQ(content, "digraph G {\n"
+                       "\tn0 [label=\"0\"];\n"
+                       "\tn1 [label=\"1\"];\n"
+                       "\tn1 -> n0;\n"
+                       "\tn2 [label=\"2\"];\n"
+                       "\tn2 -> n0;\n"
+                       "\tn3 [label=\"3\"];\n"
+                       "\tn3 -> n1;\n\tn3 -> n2;\n"
+                       "}\n");
+
+    in.close();
+    // std::filesystem::remove("test.dot");
 }
