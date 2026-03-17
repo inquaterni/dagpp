@@ -161,31 +161,29 @@ namespace dagpp {
         const auto n = count();
         if (n == 0) return true;
 
-        std::vector<std::size_t> in_degree(n, 0);
-        for (nodeid_t u = 0; u < n; ++u) {
-            auto edges = out_edges(u);
-            if (!edges) continue;
-            for (const auto v : *edges) {
-                ++in_degree[v];
-            }
-        }
+        std::vector<std::size_t> in_degree(n);
+        std::vector<nodeid_t> queue;
+        queue.reserve(n);
 
-        std::size_t processed = 0;
-        std::queue<nodeid_t> queue;
         for (nodeid_t u = 0; u < n; ++u) {
-            if (in_degree[u] == 0) queue.push(u);
-        }
-        while (!queue.empty()) {
-            const auto u = queue.front();
-            queue.pop();
-            ++processed;
-            auto edges = out_edges(u);
-            if (!edges) continue;
-            for (const auto v : *edges) {
-                if (--in_degree[v] == 0) queue.push(v);
+            in_degree[u] = m_rev_offsets[u + 1] - m_rev_offsets[u];
+            if (in_degree[u] == 0) {
+                queue.emplace_back(u);
             }
         }
-        return processed == n;
+        std::size_t head = 0;
+        while (head < queue.size()) {
+            const auto u = queue[head++];
+
+            if (auto edges = out_edges(u)) {
+                for (const auto v : *edges) {
+                    if (--in_degree[v] == 0) {
+                        queue.emplace_back(v);
+                    }
+                }
+            }
+        }
+        return queue.size() == n;
     }
 } // dagpp
 

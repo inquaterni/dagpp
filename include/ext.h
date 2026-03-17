@@ -6,6 +6,7 @@
 #define DAGPP_EXT_H
 #include <filesystem>
 #include <fstream>
+#include <format>
 
 #include "digraph.h"
 

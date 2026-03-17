@@ -9,7 +9,6 @@ set(DAGPP_INCLUDES
 )
 set(DAGPP_SRC
         src/digraph.cpp
-        src/ext.cpp
 )
 
 add_library(dagpp STATIC
