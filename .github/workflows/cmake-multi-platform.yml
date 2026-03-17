@@ -96,12 +96,10 @@ jobs:
                 working-directory: build
                 run: ctest --output-on-failure
 
-            -   name: Extract Coverage Percentage
+            -   name: Extract coverage percentage
                 id: coverage
                 run: |
-                    # Run gcovr with summary flag (-s) to get the clean text output
-                    # Grab the "lines:" row, extract the percentage, and strip the '%' sign
-                    COVERAGE=$(gcovr -r ${{ github.workspace }} -s | grep "^lines:" | awk '{print $2}' | tr -d '%')
+                    COVERAGE=$(gcovr -r ${{ github.workspace }} --gcov-executable gcov-14 -e ".*_deps.*" -s | grep "^lines:" | awk '{print $2}' | tr -d '%')
                     echo "Coverage is $COVERAGE%"
                     echo "percent=$COVERAGE" >> $GITHUB_OUTPUT
 
