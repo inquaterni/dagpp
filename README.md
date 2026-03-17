@@ -6,9 +6,7 @@ A simple and fast C++23 directed graph library.
 ![CMake](https://img.shields.io/badge/CMake-3.31%2B-064F8C?logo=cmake)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![CI](https://github.com/inquaterni/dagpp/actions/workflows/cmake-multi-platform.yml/badge.svg)
-![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/inquaterni/a959a29ceba525fc38f427725e75b15f/raw/coverage.json)
----
-
+[![codecov](https://codecov.io/github/inquaterni/dagpp/graph/badge.svg?token=R85MIRY2FG)](https://codecov.io/github/inquaterni/dagpp)
 ## Table of Contents
 
 - [Features](#features)
