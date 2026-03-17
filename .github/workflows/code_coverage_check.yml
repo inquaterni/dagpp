@@ -45,8 +45,6 @@ jobs:
           --xml-pretty -o coverage_raw.xml
           
           sed "s|${{ github.workspace }}/||g" coverage_raw.xml > coverage.xml
-          
-          head -n 20 coverage.xml
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
@@ -54,3 +52,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           fail_ci_if_error: true
+          slug: ${{ github.repository }}
+          override_branch: ${{ github.head_ref || github.ref_name }}
+          override_commit: ${{ github.event.pull_request.head.sha || github.sha }}

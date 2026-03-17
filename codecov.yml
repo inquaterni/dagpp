@@ -9,7 +9,3 @@ coverage:
     project:
       default:
         target: auto
-
-ignore:
-  - "build/.*"
-  - "tests/.*"
