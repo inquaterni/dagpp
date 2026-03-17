@@ -41,10 +41,7 @@ jobs:
           gcovr --root . ./build \
           --gcov-executable gcov-14 \
           --filter 'include/' \
-          --filter 'src/' \
-          --exclude '.*_deps.*' \
           --exclude-unreachable-branches \
-          --exclude-throw-branches \
           --xml-pretty -o coverage.xml
 
       - name: Upload to Codecov
