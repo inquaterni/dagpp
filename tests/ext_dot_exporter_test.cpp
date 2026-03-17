@@ -26,6 +26,7 @@ TEST(dot_exporter_test, empty_graph) {
                                std::istreambuf_iterator<char>());
     EXPECT_EQ(content, "digraph G {\n}\n");
 
+    in.close();
     std::filesystem::remove("test.dot");
 }
 TEST(dot_exporter_test, diamond_graph) {
@@ -66,5 +67,6 @@ TEST(dot_exporter_test, diamond_graph) {
                        "\tn3 [label=\"3\"];\n"
                        "}\n");
 
+    in.close();
     std::filesystem::remove("test.dot");
 }
