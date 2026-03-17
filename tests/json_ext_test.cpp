@@ -59,6 +59,7 @@ TEST(json_ext_test, full_program_test) {
     std::ofstream out("graph.json");
     ASSERT_TRUE(out.is_open());
     graph.export_json(out);
+    out.close();
     ASSERT_TRUE(std::filesystem::exists("graph.json"));
 
     std::filesystem::remove("graph.json");
