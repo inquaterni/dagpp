@@ -13,6 +13,8 @@ add_executable(dagpp_tests
         topo_sort_test.cpp
         global.h
         in_edges_acyclic_test.cpp
+        json_ext_test.cpp
+        basic_usage.cpp
 )
 
 target_link_libraries(dagpp_tests

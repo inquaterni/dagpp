@@ -29,7 +29,7 @@ jobs:
                       cpp_compiler: clang++-18
                 exclude:
                     - os: windows-latest
-                      c_compiler: gcc-13
+                      c_compiler: gcc-14
                     - os: windows-latest
                       c_compiler: clang-18
                     - os: ubuntu-latest
