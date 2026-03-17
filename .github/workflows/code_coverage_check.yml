@@ -36,31 +36,13 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure
 
-      - name: Extract coverage percentage
-        id: coverage
+      - name: Generate coverage report
         run: |
-          COVERAGE=$(gcovr -r ${{ github.workspace }} --gcov-executable gcov-14 -e ".*_deps.*" -s | grep "^lines:" | awk '{print $2}' | tr -d '%')
-          echo "Coverage is $COVERAGE%"
-          echo "percent=$COVERAGE" >> $GITHUB_OUTPUT
+          gcovr -r . --gcov-executable gcov-14 -e ".*_deps.*" --xml coverage.xml
 
-      - name: Update gist via cURL
-        env:
-          GIST_TOKEN: ${{ secrets.GIST_SECRET }}
-          GIST_ID: a959a29ceba525fc38f427725e75b15f
-          PERCENT: ${{ steps.coverage.outputs.percent }}
-        run: |
-          if (( $(echo "$PERCENT > 80" | bc -l) )); then COLOR="green";
-          elif (( $(echo "$PERCENT > 60" | bc -l) )); then COLOR="yellow";
-          else COLOR="red"; fi
-          BADGE_JSON=$(jq -nc \
-            --arg label "coverage" \
-            --arg message "$PERCENT%" \
-            --arg color "$COLOR" \
-            '{schemaVersion: 1, label: $label, message: $message, color: $color}')
-            
-            curl -L -X PATCH \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer $GIST_TOKEN" \
-              -H "X-GitHub-Api-Version: 2026-03-10" \
-              https://api.github.com/gists/$GIST_ID \
-              -d "$(jq -nc --arg content "$BADGE_JSON" '{"files": {"coverage.json": {"content": $content}}}')"
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: true
