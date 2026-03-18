@@ -65,7 +65,7 @@ csr::digraph<TNode, Ext1...>    (immutable CSR, inherits from each Ext)
         └── <Ext methods ...>    (zero-cost mixins)
 ```
 
-Both implementations satisfy the `dagpp::directed_graph` C++20 concept:
+Both implementations satisfy the `dagpp::directed_graph` concept:
 ```cpp
 template <typename T>
 concept directed_graph = requires (const T &t, dagpp::nodeid_t id)

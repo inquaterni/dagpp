@@ -31,11 +31,7 @@ else ()
     message(STATUS "No ccache found on the machine.")
 endif()
 
-add_library(dagpp INTERFACE
-        include/dagpp.h
-        include/csr.h
-        include/usings.h
-        include/helpers.h)
+add_library(dagpp INTERFACE)
 target_sources(dagpp INTERFACE
         FILE_SET HEADERS
         BASE_DIRS include
@@ -44,6 +40,9 @@ target_sources(dagpp INTERFACE
         include/dot.h
         include/topo_sort.h
         include/dagpp.h
+        include/helpers.h
+        include/usings.h
+        include/csr.h
 )
 target_include_directories(dagpp INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -71,7 +70,11 @@ include(CheckCXXCompilerFlag)
 include(CheckIPOSupported)
 
 if(CMAKE_BUILD_TYPE MATCHES Release)
-    add_compile_options("-O3" "-fno-math-errno" "-fomit-frame-pointer")
+    if(MSVC)
+        add_compile_options("/O2")
+    else()
+        add_compile_options("-O3" "-fno-math-errno" "-fomit-frame-pointer")
+    endif()
     if(DAGPP_ENABLE_NO_EXCEPT)
         check_cxx_compiler_flag("-fno-exceptions" COMPILER_HAS_NO_EXCEPTIONS)
         if(COMPILER_HAS_NO_EXCEPTIONS)
@@ -107,28 +110,45 @@ if(CMAKE_BUILD_TYPE MATCHES Release)
     endif()
 
     if(DAGPP_BUILD_NATIVE)
-        check_cxx_compiler_flag("-march=native" COMPILER_HAS_MARCH_NATIVE)
-        if(COMPILER_HAS_MARCH_NATIVE)
-            add_compile_options("-march=native")
+        if(NOT MSVC)
+            check_cxx_compiler_flag("-march=native" COMPILER_HAS_MARCH_NATIVE)
+            if(COMPILER_HAS_MARCH_NATIVE)
+                add_compile_options("-march=native")
+            endif()
         endif()
     else()
         if(DAGPP_ENABLE_AVX10)
-            check_cxx_compiler_flag("-mavx10.1" COMPILER_HAS_AVX10)
+            if(MSVC)
+                set(FLAG_AVX10 "/arch:AVX10.1")
+            else()
+                set(FLAG_AVX10 "-mavx10.1")
+            endif()
+            check_cxx_compiler_flag("${FLAG_AVX10}" COMPILER_HAS_AVX10)
             if(COMPILER_HAS_AVX10)
-                add_compile_options("-mavx10.1")
+                add_compile_options("${FLAG_AVX10}")
             endif()
         elseif(DAGPP_ENABLE_AVX2)
-            check_cxx_compiler_flag("-mavx2" COMPILER_HAS_AVX2)
+            if(MSVC)
+                set(FLAG_AVX2 "/arch:AVX2")
+            else()
+                set(FLAG_AVX2 "-mavx2")
+            endif()
+            check_cxx_compiler_flag("${FLAG_AVX2}" COMPILER_HAS_AVX2)
             if(COMPILER_HAS_AVX2)
-                add_compile_options("-mavx2")
+                add_compile_options("${FLAG_AVX2}")
             endif()
         endif()
     endif()
     if(DAGPP_ENABLE_FAST_MATH)
-        check_cxx_compiler_flag("-ffast-math" COMPILER_HAS_FAST_MATH)
+        if(MSVC)
+            set(FLAG_FAST_MATH "/fp:fast")
+        else()
+            set(FLAG_FAST_MATH "-ffast-math")
+        endif()
+        check_cxx_compiler_flag("${FLAG_FAST_MATH}" COMPILER_HAS_FAST_MATH)
         if(COMPILER_HAS_FAST_MATH)
-            message(WARNING "-ffast-math flag is set")
-            add_compile_options("-ffast-math")
+            message(WARNING "${FLAG_FAST_MATH} flag is set")
+            add_compile_options("${FLAG_FAST_MATH}")
         endif()
     endif()
 endif()
