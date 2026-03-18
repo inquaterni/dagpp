@@ -149,3 +149,27 @@ TEST(topo_sort_test, cycle_detected) {
     ASSERT_FALSE(result.has_value());
     EXPECT_EQ(result.error(), "Graph contains a cycle.");
 }
+
+struct MockErrorGraph {
+    using node_type = test_node;
+    using size_type = std::size_t;
+    std::size_t count() const { return 1; }
+    test_node node(dagpp::nodeid_t) const { return {0}; }
+    std::expected<std::span<const dagpp::nodeid_t>, std::string> out_edges(dagpp::nodeid_t) const {
+        return std::unexpected{"Mock error"};
+    }
+    std::expected<std::span<const dagpp::nodeid_t>, std::string> in_edges(dagpp::nodeid_t) const {
+        return std::unexpected{"Mock error"};
+    }
+    bool is_acyclic() const { return true; }
+};
+
+TEST(topo_sort_test, error_graph) {
+    MockErrorGraph g;
+    const auto result = dagpp::topo_sort(g);
+    
+    // out_edges returns error, which topo_sort skips using `continue`.
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->size(), 1);
+    EXPECT_EQ((*result)[0], 0);
+}

@@ -259,3 +259,34 @@ TEST(dot_exporter_mut_test, diamond_graph_inbound) {
     in.close();
     std::filesystem::remove("test.dot");
 }
+
+struct MockErrorGraphDot : public dagpp::ext::dot_exporter {
+    using node_type = test_node;
+    using size_type = std::size_t;
+    std::size_t count() const { return 1; }
+    test_node node(dagpp::nodeid_t) const { return {0}; }
+    std::expected<std::span<const dagpp::nodeid_t>, std::string> out_edges(dagpp::nodeid_t) const {
+        return std::unexpected{"Mock error"};
+    }
+    std::expected<std::span<const dagpp::nodeid_t>, std::string> in_edges(dagpp::nodeid_t) const {
+        return std::unexpected{"Mock error"};
+    }
+    bool is_acyclic() const { return true; }
+};
+
+TEST(dot_exporter_mut_test, node_error) {
+    MockErrorGraphDot g;
+    auto out = std::ofstream("test_err.dot");
+    g.to_dot([] (const std::size_t i, const test_node &n){
+        return std::format("\tn{} [label=\"{}\"];\n", i, n.value);
+    }, out);
+    out.close();
+
+    std::ifstream in("test_err.dot");
+    const std::string content((std::istreambuf_iterator<char>(in)),
+                               std::istreambuf_iterator<char>());
+    // It should skip the edges writing
+    EXPECT_EQ(content, "digraph G {\n\tn0 [label=\"0\"];\n}\n");
+    in.close();
+    std::filesystem::remove("test_err.dot");
+}

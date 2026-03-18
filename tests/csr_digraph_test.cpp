@@ -99,3 +99,85 @@ TEST(csr_digraph_test, diamond_graph) {
     const auto d_out = graph.out_edges(d);
     EXPECT_TRUE(d_out->empty());
 }
+
+TEST(csr_digraph_test, lvalue_add_node_and_reserve) {
+    dagpp::csr::digraph_builder<test_node> builder;
+    builder.reserve_nodes(2);
+    builder.reserve_edges(1);
+    test_node n1{10};
+    test_node n2{20};
+    builder.add_node(n1);
+    builder.add_node(n2);
+    builder.add_edge(0, 1);
+    const auto graph = builder.compile();
+    EXPECT_EQ(graph.count(), 2);
+}
+
+TEST(csr_digraph_test, out_of_bounds) {
+    dagpp::csr::digraph_builder<test_node> builder;
+    builder.add_node({1});
+    const auto graph = builder.compile();
+    
+    auto out = graph.out_edges(1);
+    EXPECT_FALSE(out.has_value());
+    EXPECT_EQ(out.error(), "Index is out of range.");
+    
+    auto in = graph.in_edges(1);
+    EXPECT_FALSE(in.has_value());
+    EXPECT_EQ(in.error(), "Index is out of range.");
+}
+
+TEST(csr_digraph_test, in_edges) {
+    dagpp::csr::digraph_builder<test_node> builder;
+    const auto a = builder.add_node({0});
+    const auto b = builder.add_node({1});
+    const auto c = builder.add_node({2});
+    builder.add_edge(a, b);
+    builder.add_edge(a, c);
+    builder.add_edge(b, c);
+    const auto graph = builder.compile();
+
+    auto a_in = graph.in_edges(a);
+    ASSERT_TRUE(a_in.has_value());
+    EXPECT_TRUE(a_in->empty());
+
+    auto b_in = graph.in_edges(b);
+    ASSERT_TRUE(b_in.has_value());
+    ASSERT_EQ(b_in->size(), 1);
+    EXPECT_EQ((*b_in)[0], a);
+
+    auto c_in = graph.in_edges(c);
+    ASSERT_TRUE(c_in.has_value());
+    ASSERT_EQ(c_in->size(), 2);
+    // Order of in-edges depends on insertion order in compile() - A then B
+    EXPECT_EQ((*c_in)[0], a);
+    EXPECT_EQ((*c_in)[1], b);
+}
+
+TEST(csr_digraph_test, is_acyclic) {
+    // Acyclic
+    dagpp::csr::digraph_builder<test_node> b1;
+    const auto a = b1.add_node({0});
+    const auto b = b1.add_node({1});
+    const auto c = b1.add_node({2});
+    b1.add_edge(a, b);
+    b1.add_edge(b, c);
+    const auto g1 = b1.compile();
+    EXPECT_TRUE(g1.is_acyclic());
+
+    // Cyclic
+    dagpp::csr::digraph_builder<test_node> b2;
+    b2.add_node({0});
+    b2.add_node({1});
+    b2.add_node({2});
+    b2.add_edge(0, 1);
+    b2.add_edge(1, 2);
+    b2.add_edge(2, 0);
+    const auto g2 = b2.compile();
+    EXPECT_FALSE(g2.is_acyclic());
+    
+    // Empty
+    dagpp::csr::digraph_builder<test_node> b3;
+    const auto g3 = b3.compile();
+    EXPECT_TRUE(g3.is_acyclic());
+}

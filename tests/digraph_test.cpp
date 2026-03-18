@@ -93,3 +93,52 @@ TEST(digraph_test, diamond_graph) {
     const auto d_out = graph.out_edges(d);
     EXPECT_TRUE(d_out->empty());
 }
+
+TEST(digraph_test, reserve_nodes_and_add_rvalue) {
+    dagpp::digraph<test_node> graph;
+    graph.reserve_nodes(2);
+    const auto id1 = graph.add_node(test_node{10});
+    const auto id2 = graph.add_node(test_node{20});
+    EXPECT_EQ(graph.count(), 2);
+    
+    const dagpp::digraph<test_node>& const_graph = graph;
+    EXPECT_EQ(const_graph.node(id1).value, 10);
+}
+
+TEST(digraph_test, out_of_bounds) {
+    dagpp::digraph<test_node> graph;
+    graph.add_node({1});
+    
+    auto out = graph.out_edges(1);
+    EXPECT_FALSE(out.has_value());
+    EXPECT_EQ(out.error(), "Index is out of range.");
+    
+    auto in = graph.in_edges(1);
+    EXPECT_FALSE(in.has_value());
+    EXPECT_EQ(in.error(), "Index is out of range.");
+}
+
+TEST(digraph_test, in_edges) {
+    dagpp::digraph<test_node> graph;
+    const auto a = graph.add_node({0});
+    const auto b = graph.add_node({1});
+    const auto c = graph.add_node({2});
+    graph.add_edge(a, b);
+    graph.add_edge(a, c);
+    graph.add_edge(b, c);
+
+    auto a_in = graph.in_edges(a);
+    ASSERT_TRUE(a_in.has_value());
+    EXPECT_TRUE(a_in->empty());
+
+    auto b_in = graph.in_edges(b);
+    ASSERT_TRUE(b_in.has_value());
+    ASSERT_EQ(b_in->size(), 1);
+    EXPECT_EQ((*b_in)[0], a);
+
+    auto c_in = graph.in_edges(c);
+    ASSERT_TRUE(c_in.has_value());
+    ASSERT_EQ(c_in->size(), 2);
+    EXPECT_EQ((*c_in)[0], a);
+    EXPECT_EQ((*c_in)[1], b);
+}
