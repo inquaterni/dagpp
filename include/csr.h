@@ -23,7 +23,7 @@ namespace dagpp::csr {
     template<node TNode>
     class digraph_builder {
     public:
-        constexpr nodeid_t add_node(TNode &node);
+        constexpr nodeid_t add_node(const TNode &node);
         constexpr nodeid_t add_node(TNode &&node);
         constexpr void add_edge(nodeid_t from, nodeid_t to);
         constexpr void reserve_nodes(std::size_t n);
@@ -104,7 +104,7 @@ namespace dagpp::csr {
     }
 
     template<node TNode>
-    constexpr nodeid_t digraph_builder<TNode>::add_node(TNode &node) {
+    constexpr nodeid_t digraph_builder<TNode>::add_node(const TNode &node) {
         m_nodes.emplace_back(node);
         return m_nodes.size() - 1;
     }
