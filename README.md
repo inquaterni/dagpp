@@ -426,7 +426,7 @@ void to_dot(this const TSelf& self,
 
 ## Benchmarks
 
-> **Note**: The benchmark suite is currently Linux-only because it uses `mallinfo2()` to accurately track specific heap memory allocations (`GraphMem` / `TopoTempMem`).
+> **Note**: Benchmark memory tracking (`GraphMem` / `TopoTempMem`) is Linux/glibc-only because it relies on `mallinfo2()`. On other platforms, memory usage will be reported as 0, but the benchmarks will still compile and run to measure execution time.
 
 To compile and run the benchmarks locally:
 

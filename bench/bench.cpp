@@ -35,7 +35,11 @@ static node_t make_node(std::size_t i) {
 
 // Returns current glibc heap usage in bytes (uordblks = in-use allocated bytes).
 static std::size_t heap_used() noexcept {
+#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 33))
     return mallinfo2().uordblks;
+#else
+    return 0;
+#endif
 }
 
 // Measures the *net* heap bytes allocated by calling fn().
