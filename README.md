@@ -21,19 +21,22 @@ A simple and fast C++23 directed graph library.
   - [JSON exporter custom extension](#json-exporter-custom-extension)
   - [Multiple extensions](#multiple-extensions)
 - [API reference](#api-reference)
-  - [digraph_builder\<TNode\>](#digraph_buildertnode)
   - [digraph\<TNode, TExtension...\>](#digraphtnode-textension)
+  - [csr::digraph_builder\<TNode\>](#csrdigraph_buildertnode)
+  - [csr::digraph\<TNode, TExtension...\>](#csrdigraphtnode-textension)
   - [topo_sort](#topo_sort)
   - [dagpp::ext::dot_exporter](#dagppextdot_exporter)
 - [CMake options](#cmake-options)
+- [Benchmarks](#benchmarks)
 - [License](#license)
 
 ---
 
 ## Features
 
-- Immutable CSR representation with forward and reverse adjacency lists
-- `out_edges()` / `in_edges()` return `std::span` views - no extra allocation
+- **Mutable representation**: `dagpp::digraph` backed by internal vectors
+- **Immutable CSR option**: Highly compact `dagpp::csr::digraph` built via `dagpp::csr::digraph_builder`
+- Both representations guarantee `out_edges()` / `in_edges()` return `std::span` views with zero extra allocation
 - Compile-time extensions via C++23 "Deducing This" (no vtables)
 - Topological sort (Kahn's) and `is_acyclic()` included
 - `std::expected` for errors; `-fno-exceptions` / `-fno-rtti` compatible
@@ -42,17 +45,39 @@ A simple and fast C++23 directed graph library.
 ## Architecture
 
 ```
-digraph_builder<TNode>          (mutable, accumulates nodes & edges)
+digraph<TNode, Ext...>          (mutable, dynamic)
+        ├── .add_node(TNode)     → nodeid_t
+        ├── .add_edge(from, to)
+        ├── <Ext methods ...>    (zero-cost mixins)
+
+csr::digraph_builder<TNode>     (mutable, accumulates nodes & edges)
         │
         │  .compile<Ext1, Ext2, ...>()
         ▼
-digraph<TNode, Ext1, Ext2, ...> (immutable CSR, inherits from each Ext)
-        ├── .out_edges(id)       → std::expected<std::span<nodeid_t>, string>
-        ├── .in_edges(id)        → std::expected<std::span<nodeid_t>, string>
+csr::digraph<TNode, Ext1...>    (immutable CSR, inherits from each Ext)
+
+# Both representations satisfy the common graph interface:
+        ├── .out_edges(id)       → std::expected<std::span<const nodeid_t>, string>
+        ├── .in_edges(id)        → std::expected<std::span<const nodeid_t>, string>
         ├── .node(id)            → const TNode&
         ├── .count()             → std::size_t
         ├── .is_acyclic()        → bool
-        └── <Ext methods ...>    (zero-cost, mixed in at compile time)
+        └── <Ext methods ...>    (zero-cost mixins)
+```
+
+Both implementations satisfy the `dagpp::directed_graph` C++20 concept:
+```cpp
+template <typename T>
+concept directed_graph = requires (const T &t, dagpp::nodeid_t id)
+{
+    typename T::node_type;
+    typename T::size_type;
+    {*t.out_edges(id)} -> std::convertible_to<std::span<const dagpp::nodeid_t>>;
+    {*t.in_edges(id)}  -> std::convertible_to<std::span<const dagpp::nodeid_t>>;
+    {t.is_acyclic()}   -> std::same_as<bool>;
+    {t.node(id)}       -> std::convertible_to<typename T::node_type>;
+    {t.count()}        -> std::same_as<typename T::size_type>;
+};
 ```
 
 ## Build instructions
@@ -72,34 +97,68 @@ cd build && ctest --output-on-failure
 ## Quick start
 
 ### Basic usage
+#### Generic mutable graph
 
 ```cpp
 #include <iostream>
 #include <dagpp.h>
 
-// Node data must satisfy std::semiregular (default constructible, copyable)
 struct Task {
     int id;
     std::string name;
 };
 
 int main() {
-    dagpp::digraph_builder<Task> builder;
+    dagpp::digraph<Task> graph;
 
-    const auto compile  = builder.add_node({0, "compile"});
-    const auto link     = builder.add_node({1, "link"});
-    const auto test     = builder.add_node({2, "test"});
+    const auto compile  = graph.add_node({0, "compile"});
+    const auto link     = graph.add_node({1, "link"});
+    const auto test     = graph.add_node({2, "test"});
 
-    builder.add_edge(compile, link);
-    builder.add_edge(link, test);
+    graph.add_edge(compile, link);
+    graph.add_edge(link, test);
     
-    const auto graph = builder.compile();
-
     if (auto edges = graph.out_edges(compile); edges) {
         std::cout << "'compile' has " << edges->size() << " outbound edge(s).\n";
     }
 
     std::cout << "Node 0: " << graph.node(0).name << "\n";
+
+    return 0;
+}
+```
+
+#### Immutable CSR graph
+
+When your graph topology is final, use the highly compact `csr::digraph`:
+
+```cpp
+#include <iostream>
+#include <dagpp.h>
+
+// Node data must satisfy std::semiregular ONLY for the CSR graph
+struct Node { 
+    int id;
+    std::string name;
+};
+
+int main() {
+    dagpp::csr::digraph_builder<Node> builder;
+
+    // Node accumulation is mutable...
+    auto a = builder.add_node({0});
+    auto b = builder.add_node({1});
+    auto c = builder.add_node({2});
+
+    builder.add_edge(a, b);
+    builder.add_edge(b, c);
+
+    // ...until compilation into an immutable graph
+    const auto graph = builder.compile();
+    // When using CSR graphs, in order to mix in extensions, you need to pass them to the builder's `compile()` method
+    // const auto graph_with_ext = builder.compile<dagpp::ext::dot_exporter>();
+
+    std::cout << "CSR graph has " << graph.count() << " nodes.\n";
 
     return 0;
 }
@@ -115,14 +174,14 @@ The reverse adjacency list is built alongside the forward one during `compile()`
 struct Node { int value; };
 
 int main() {
-    dagpp::digraph_builder<Node> builder;
+    dagpp::csr::digraph_builder<Node> builder;
 
     auto a = builder.add_node({1});
     auto b = builder.add_node({2});
     auto c = builder.add_node({3});
 
     builder.add_edge(a, c);
-    builder.add_edge(b, c);   // two nodes point to c
+    builder.add_edge(b, c);
 
     const auto graph = builder.compile();
 
@@ -149,16 +208,14 @@ int main() {
 struct Node { int id; };
 
 int main() {
-    dagpp::digraph_builder<Node> builder;
+    dagpp::digraph<Node> graph;
 
-    auto a = builder.add_node({0});
-    auto b = builder.add_node({1});
-    auto c = builder.add_node({2});
+    auto a = graph.add_node({0});
+    auto b = graph.add_node({1});
+    auto c = graph.add_node({2});
 
-    builder.add_edge(a, b);
-    builder.add_edge(b, c);
-
-    const auto graph = builder.compile();
+    graph.add_edge(a, b);
+    graph.add_edge(b, c);
 
     if (auto order = dagpp::topo_sort(graph); order) {
         std::cout << "Topological order: ";
@@ -181,23 +238,22 @@ Edge direction can be reversed by passing `dagpp::inbound{}` as the direction po
 
 ```cpp
 #include <fstream>
+#include <format>
 #include <dagpp.h>
 #include <dot.h>
 
 struct Node { int id; };
 
 int main() {
-    dagpp::digraph_builder<Node> builder;
+    dagpp::digraph<Node, dagpp::ext::dot_exporter> graph;
 
-    auto a = builder.add_node({10});
-    auto b = builder.add_node({20});
-    auto c = builder.add_node({30});
+    auto a = graph.add_node({10});
+    auto b = graph.add_node({20});
+    auto c = graph.add_node({30});
 
-    builder.add_edge(a, b);
-    builder.add_edge(a, c);
-    builder.add_edge(b, c);
-
-    const auto graph = builder.compile<dagpp::ext::dot_exporter>();
+    graph.add_edge(a, b);
+    graph.add_edge(a, c);
+    graph.add_edge(b, c);
 
     std::ofstream out("graph.dot");
     graph.to_dot([](std::size_t i, const Node& n) {
@@ -256,11 +312,11 @@ struct json_exporter {
 };
 
 int main() {
-    dagpp::digraph_builder<Node> builder;
+    dagpp::digraph<Node, json_exporter> graph;
 
-    builder.add_edge(builder.add_node({10}), builder.add_node({20}));
-
-    const auto graph = builder.compile<json_exporter>();
+    const auto a = graph.add_node({10});
+    const auto b = graph.add_node({20});
+    graph.add_edge(a, b);
 
     std::ofstream out("graph.json");
     graph.export_json(out);
@@ -274,7 +330,10 @@ int main() {
 Provide as many extensions as you like - they are all mixed in simultaneously:
 
 ```cpp
-const auto graph = builder.compile<json_exporter, dagpp::ext::dot_exporter>();
+dagpp::digraph<Node, json_exporter, dagpp::ext::dot_exporter> graph;
+// OR
+const auto csr_graph = builder.compile<json_exporter, dagpp::ext::dot_exporter>();
+
 
 graph.export_json(json_out);
 graph.to_dot([](std::size_t i, const Node& n) { ... }, dot_out);
@@ -284,19 +343,34 @@ graph.to_dot([](std::size_t i, const Node& n) { ... }, dot_out);
 
 ## API reference
 
-### `digraph_builder<TNode>`
-
-| Method                                      | Description                                                                    |
-|---------------------------------------------|--------------------------------------------------------------------------------|
-| `nodeid_t add_node(TNode)`                  | Appends a node and returns its stable id                                       |
-| `void add_edge(nodeid_t from, nodeid_t to)` | Records a directed edge                                                        |
-| `void reserve_nodes(size_t n)`              | Pre-allocates node storage                                                     |
-| `void reserve_edges(size_t n)`              | Pre-allocates edge storage                                                     |
-| `digraph<TNode, Ext...> compile<Ext...>()`  | Builds the immutable CSR graph; `builder` should not be reused after this call |
-
-> **Note:** `TNode` must satisfy `std::semiregular`. SEE: https://en.cppreference.com/w/cpp/concepts/semiregular
-
 ### `digraph<TNode, TExtension...>`
+
+| Method                                      | Return Type                                             | Description                                           |
+|---------------------------------------------|---------------------------------------------------------|-------------------------------------------------------|
+| `add_node(TNode)`                           | `nodeid_t`                                              | Appends a node and returns its stable id              |
+| `add_edge(nodeid_t from, nodeid_t to)`      | `void`                                                  | Records a directed edge                               |
+| `reserve_nodes(size_t n)`                   | `void`                                                  | Pre-allocates node storage                            |
+| `node(nodeid_t id)`                         | `const TNode&` or `TNode&`                              | Returns the node data at `id`                         |
+| `count()`                                   | `std::size_t`                                           | Total number of nodes                                 |
+| `out_edges(nodeid_t id)`                    | `std::expected<std::span<const nodeid_t>, std::string>` | Outbound neighbour ids; error if `id` is out of range |
+| `in_edges(nodeid_t id)`                     | `std::expected<std::span<const nodeid_t>, std::string>` | Inbound neighbour ids; error if `id` is out of range  |
+| `is_acyclic()`                              | `bool`                                                  | `true` if the graph is a DAG; O(V + E)                |
+
+> **Note:** For the CSR graph, `TNode` must satisfy `std::semiregular`. SEE: https://en.cppreference.com/w/cpp/concepts/semiregular
+
+---
+
+### `csr::digraph_builder<TNode>`
+
+| Method                                          | Description                                                                    |
+|-------------------------------------------------|--------------------------------------------------------------------------------|
+| `nodeid_t add_node(TNode)`                      | Appends a node and returns its stable id                                       |
+| `void add_edge(nodeid_t from, nodeid_t to)`     | Records a directed edge                                                        |
+| `void reserve_nodes(size_t n)`                  | Pre-allocates node storage                                                     |
+| `void reserve_edges(size_t n)`                  | Pre-allocates edge storage                                                     |
+| `csr::digraph<TNode, Ext...> compile<Ext...>()` | Builds the immutable CSR graph; `builder` should not be reused after this call |
+
+### `csr::digraph<TNode, TExtension...>`
 
 | Method                   | Return Type                                             | Description                                           |
 |--------------------------|---------------------------------------------------------|-------------------------------------------------------|
@@ -311,9 +385,9 @@ Edge spans (`std::span<const nodeid_t>`) are zero-copy views into the internal C
 ### `topo_sort`
 
 ```cpp
-template<node TNode, typename... TExtension>
-std::expected<std::vector<nodeid_t>, std::string>
-    dagpp::topo_sort(const digraph<TNode, TExtension...>& graph);
+template<directed_graph TGraph>
+constexpr std::expected<std::vector<nodeid_t>, std::string>
+    dagpp::topo_sort(const TGraph& graph);
 ```
 
 Kahn's BFS-based topological sort. Returns the sorted node id sequence, or `std::unexpected{"Graph contains a cycle."}` if a cycle is detected.
@@ -323,7 +397,7 @@ Kahn's BFS-based topological sort. Returns the sorted node id sequence, or `std:
 ### `dagpp::ext::dot_exporter`
 
 ```cpp
-template<typename TDir = dagpp::outbound, typename TSelf, typename Pred>
+template<typename TDir = dagpp::outbound, directed_graph TSelf, typename Pred>
 void to_dot(this const TSelf& self,
             const Pred& label_pred,
             std::ofstream& out,
@@ -335,8 +409,6 @@ void to_dot(this const TSelf& self,
 | `cmp`        | Direction policy - `dagpp::outbound` (default) or `dagpp::inbound`                |
 | `label_pred` | Callable `(std::size_t index, const node_t& node) -> std::string` for node labels |
 | `out`        | Output file stream                                                                |
-
----
 
 ## CMake options
 
@@ -351,6 +423,31 @@ void to_dot(this const TSelf& self,
 | `DAGPP_ENABLE_AVX10`      | `ON`    | Use AVX10.1 when not building native         |
 | `DAGPP_ENABLE_AVX2`       | `ON`    | Fall back to AVX2 when not building native   |
 | `DAGPP_ENABLE_FAST_MATH`  | `OFF`   | Enable `-ffast-math` (not recommended)       |
+
+## Benchmarks
+
+> **Note**: The benchmark suite is currently Linux-only because it uses `mallinfo2()` to accurately track specific heap memory allocations (`GraphMem` / `TopoTempMem`).
+
+To compile and run the benchmarks locally:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target dagpp_bench -j$(nproc)
+./build/bench/dagpp_bench
+```
+
+Performance is measured on a typical linear chain graph comprising `65,536` nodes with `65,535` edges, using the immutable `csr::digraph`.
+
+| Benchmark               | CPU Time | Throughput      | Memory Footprint (`GraphMem`) | Temporary Mem (`TopoTempMem`) |
+|-------------------------|----------|-----------------|-------------------------------|-------------------------------|
+| **`BM_ConstructChain`** | 17.09 ms | 3.83 M items/s  | 9.00 MiB                      | -                             |
+| **`BM_OutEdgesChain`**  | 0.09 ms  | 685.8 M items/s | 9.00 MiB                      | -                             |
+| **`BM_InEdgesChain`**   | 0.08 ms  | 761.7 M items/s | 9.00 MiB                      | -                             |
+| **`BM_TopoSortChain`**  | 0.33 ms  | 196.1 M items/s | 9.00 MiB                      | 0 bytes                       |
+
+*Hardware context: Ryzen 5 PRO 7540U, 12x 3.16 GHz CPUs, 16 MB L3 cache.
+Built with `-O3` and Google Benchmark.*
+
 
 ## License
 

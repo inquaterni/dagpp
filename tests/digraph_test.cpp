@@ -3,27 +3,24 @@
 #include "global.h"
 
 TEST(digraph_test, empty_graph) {
-    dagpp::digraph_builder<test_node> builder;
-    const auto graph = builder.compile();
+    const dagpp::digraph<test_node> graph;
 
     EXPECT_EQ(graph.count(), 0);
 }
 
 TEST(digraph_test, single_node) {
-    dagpp::digraph_builder<test_node> builder;
-    const auto id = builder.add_node({42});
-    const auto graph = builder.compile();
+    dagpp::digraph<test_node> graph;
+    const auto id = graph.add_node({42});
 
     EXPECT_EQ(graph.count(), 1);
     EXPECT_EQ(graph.node(id).value, 42);
 }
 
 TEST(digraph_test, multiple_nodes) {
-    dagpp::digraph_builder<test_node> builder;
-    const auto a = builder.add_node({1});
-    const auto b = builder.add_node({2});
-    const auto c = builder.add_node({3});
-    const auto graph = builder.compile();
+    dagpp::digraph<test_node> graph;
+    const auto a = graph.add_node({1});
+    const auto b = graph.add_node({2});
+    const auto c = graph.add_node({3});
 
     EXPECT_EQ(graph.count(), 3);
     EXPECT_EQ(graph.node(a).value, 1);
@@ -32,11 +29,10 @@ TEST(digraph_test, multiple_nodes) {
 }
 
 TEST(digraph_test, single_edge) {
-    dagpp::digraph_builder<test_node> builder;
-    const auto a = builder.add_node({1});
-    const auto b = builder.add_node({2});
-    builder.add_edge(a, b);
-    const auto graph = builder.compile();
+    dagpp::digraph<test_node> graph;
+    const auto a = graph.add_node({1});
+    const auto b = graph.add_node({2});
+    graph.add_edge(a, b);
 
     const auto a_out = graph.out_edges(a);
     ASSERT_TRUE(a_out.has_value());
@@ -49,15 +45,14 @@ TEST(digraph_test, single_edge) {
 }
 
 TEST(digraph_test, multiple_out_edges) {
-    dagpp::digraph_builder<test_node> builder;
-    const auto a = builder.add_node({0});
-    const auto b = builder.add_node({1});
-    const auto c = builder.add_node({2});
-    const auto d = builder.add_node({3});
-    builder.add_edge(a, b);
-    builder.add_edge(a, c);
-    builder.add_edge(a, d);
-    const auto graph = builder.compile();
+    dagpp::digraph<test_node> graph;
+    const auto a = graph.add_node({});
+    const auto b = graph.add_node({1});
+    const auto c = graph.add_node({2});
+    const auto d = graph.add_node({3});
+    graph.add_edge(a, b);
+    graph.add_edge(a, c);
+    graph.add_edge(a, d);
 
     const auto a_out = graph.out_edges(a);
     ASSERT_TRUE(a_out.has_value());
@@ -69,16 +64,15 @@ TEST(digraph_test, multiple_out_edges) {
 
 TEST(digraph_test, diamond_graph) {
     // A -> B, A -> C, B -> D, C -> D
-    dagpp::digraph_builder<test_node> builder;
-    const auto a = builder.add_node({0});
-    const auto b = builder.add_node({1});
-    const auto c = builder.add_node({2});
-    const auto d = builder.add_node({3});
-    builder.add_edge(a, b);
-    builder.add_edge(a, c);
-    builder.add_edge(b, d);
-    builder.add_edge(c, d);
-    const auto graph = builder.compile();
+    dagpp::digraph<test_node> graph;
+    const auto a = graph.add_node({0});
+    const auto b = graph.add_node({1});
+    const auto c = graph.add_node({2});
+    const auto d = graph.add_node({3});
+    graph.add_edge(a, b);
+    graph.add_edge(a, c);
+    graph.add_edge(b, d);
+    graph.add_edge(c, d);
 
     const auto a_out = graph.out_edges(a);
     ASSERT_TRUE(a_out.has_value());

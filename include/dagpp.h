@@ -6,6 +6,7 @@
 #define DAGPP_DAGPP_H
 
 #include "digraph.h"
+#include "csr.h"
 #include "topo_sort.h"
 
 #endif //DAGPP_DAGPP_H

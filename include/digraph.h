@@ -4,203 +4,118 @@
 
 #ifndef DAGPP_DIRECTED_GRAPH_H
 #define DAGPP_DIRECTED_GRAPH_H
+#include <vector>
 #include <expected>
-#include <queue>
 #include <span>
 #include <string>
-#include <vector>
+
+#include "usings.h"
+#include "helpers.h"
 
 namespace dagpp {
-    template<typename T>
-    concept node = std::semiregular<T>;
-    template<node TNode>
-    class digraph_builder;
-    template<node TNode, typename ...TExtension>
-    class digraph;
-
-    using nodeid_t = std::size_t;
-    using edgeid_t = std::size_t;
-
-    template<node TNode>
-    class digraph_builder {
-    public:
-        constexpr nodeid_t add_node(TNode &node);
-        constexpr nodeid_t add_node(TNode &&node);
-        constexpr void add_edge(nodeid_t from, nodeid_t to);
-        constexpr void reserve_nodes(std::size_t n);
-        constexpr void reserve_edges(std::size_t n);
-        template<typename ...TExtension>
-        [[nodiscard]]
-        constexpr digraph<TNode, TExtension...> compile();
-    private:
-        struct edge_t { nodeid_t from, to; };
-        std::vector<TNode> m_nodes;
-        std::vector<edge_t> m_edges;
-    };
-
-    template<node TNode, typename ...TExtension>
+    template <typename TNode, typename ...TExtension>
     class digraph: public TExtension... {
     public:
-        using node_t = TNode;
+        using node_type = TNode;
+        using size_type = std::size_t;
+
+        constexpr nodeid_t add_node(const TNode &node);
+        constexpr nodeid_t add_node(TNode &&node);
+        constexpr void add_edge(nodeid_t from, nodeid_t to);
+        constexpr void reserve_nodes(size_type n);
+
         [[nodiscard]]
-        constexpr const node_t& node(nodeid_t id) const;
+        constexpr const node_type& node(nodeid_t id) const { return m_nodes[id]; }
         [[nodiscard]]
-        constexpr std::size_t count() const;
+        constexpr node_type& node(nodeid_t id) { return m_nodes[id]; }
+        [[nodiscard]]
+        constexpr size_type count() const { return m_nodes.size(); }
+
         [[nodiscard]]
         constexpr std::expected<std::span<const nodeid_t>, std::string> out_edges(nodeid_t id) const;
         [[nodiscard]]
         constexpr std::expected<std::span<const nodeid_t>, std::string> in_edges(nodeid_t id) const;
+
         [[nodiscard]]
         constexpr bool is_acyclic() const;
 
     private:
-        friend class digraph_builder<node_t>;
-        std::vector<node_t> m_nodes;
-        std::vector<edgeid_t> m_offsets;
-        std::vector<nodeid_t> m_edges;
-        std::vector<edgeid_t> m_rev_offsets;
-        std::vector<nodeid_t> m_rev_edges;
+        std::vector<node_type> m_nodes;
+        std::vector<std::vector<nodeid_t>> m_out_edges;
+        std::vector<std::vector<nodeid_t>> m_in_edges;
     };
 
-    template<node TNode>
-    template<typename ...TExtension>
-    constexpr digraph<TNode, TExtension...> digraph_builder<TNode>::compile() {
-        digraph<TNode, TExtension...> result;
-        const auto V = m_nodes.size();
-        const auto E = m_edges.size();
-
-        result.m_nodes = std::move(m_nodes);
-
-        result.m_offsets.assign(V + 1, 0);
-        result.m_edges.resize(E);
-        for (const auto& e : m_edges) {
-            ++result.m_offsets[e.from + 1];
-        }
-        for (std::size_t i = 1; i <= V; ++i) {
-            result.m_offsets[i] += result.m_offsets[i - 1];
-        }
-        auto fwd_offsets = result.m_offsets;
-        for (const auto& e : m_edges) {
-            result.m_edges[fwd_offsets[e.from]++] = e.to;
-        }
-
-
-        result.m_rev_offsets.assign(V + 1, 0);
-        result.m_rev_edges.resize(E);
-        for (const auto& e : m_edges) {
-            ++result.m_rev_offsets[e.to + 1];
-        }
-        for (std::size_t i = 1; i <= V; ++i) {
-            result.m_rev_offsets[i] += result.m_rev_offsets[i - 1];
-        }
-        auto rev_offsets = result.m_rev_offsets;
-        for (const auto& e : m_edges) {
-            result.m_rev_edges[rev_offsets[e.to]++] = e.from;
-        }
-
-        m_edges.clear();
-        return result;
-    }
-
-    template<node TNode>
-    constexpr nodeid_t digraph_builder<TNode>::add_node(TNode &node) {
+    template<typename TNode, typename ... TExtension>
+    constexpr nodeid_t digraph<TNode, TExtension...>::add_node(const TNode &node) {
         m_nodes.emplace_back(node);
+        m_out_edges.emplace_back();
+        m_in_edges.emplace_back();
         return m_nodes.size() - 1;
     }
 
-    template<node TNode>
-    constexpr nodeid_t digraph_builder<TNode>::add_node(TNode &&node) {
-        m_nodes.emplace_back(std::forward<TNode>(node));
+    template<typename TNode, typename ... TExtension>
+    constexpr nodeid_t digraph<TNode, TExtension...>::add_node(TNode &&node) {
+        m_nodes.emplace_back(std::move(node));
+        m_out_edges.emplace_back();
+        m_in_edges.emplace_back();
         return m_nodes.size() - 1;
     }
 
-    template<node TNode>
-    constexpr void digraph_builder<TNode>::add_edge(nodeid_t from, nodeid_t to) {
-        m_edges.emplace_back(edge_t {from, to});
+    template<typename TNode, typename ... TExtension>
+    constexpr void digraph<TNode, TExtension...>::add_edge(const nodeid_t from, const nodeid_t to) {
+        m_out_edges[from].emplace_back(to);
+        m_in_edges[to].emplace_back(from);
     }
 
-    template<node TNode>
-    constexpr void digraph_builder<TNode>::reserve_nodes(std::size_t n) {
+    template<typename TNode, typename ... TExtension>
+    constexpr void digraph<TNode, TExtension...>::reserve_nodes(size_type n) {
         m_nodes.reserve(n);
+        m_out_edges.reserve(n);
+        m_in_edges.reserve(n);
     }
 
-    template<node TNode>
-    constexpr void digraph_builder<TNode>::reserve_edges(std::size_t n) {
-        m_edges.reserve(n);
+    template<typename TNode, typename ... TExtension>
+    constexpr std::expected<std::span<const nodeid_t>, std::string> digraph<TNode, TExtension...>::out_edges(
+    const nodeid_t id) const {
+        if (id >= m_out_edges.size()) return std::unexpected("Index is out of range.");
+        return m_out_edges[id];
     }
 
-
-    template<node TNode, typename... TExtension>
-    constexpr const TNode & digraph<TNode, TExtension...>::node(nodeid_t id) const {
-        return m_nodes[id];
+    template<typename TNode, typename ... TExtension>
+    constexpr std::expected<std::span<const nodeid_t>, std::string> digraph<TNode, TExtension...>::in_edges(
+    const nodeid_t id) const {
+        if (id >= m_in_edges.size()) return std::unexpected("Index is out of range.");
+        return m_in_edges[id];
     }
 
-    template<node TNode, typename... TExtension>
-    constexpr std::size_t digraph<TNode, TExtension...>::count() const {
-        return m_nodes.size();
-    }
-
-    template<node TNode, typename ... TExtension>
-    constexpr std::expected<std::span<const nodeid_t>, std::string> digraph<TNode, TExtension...>::out_edges(const nodeid_t id) const {
-        if (m_offsets.size() - 1 <= id) {
-            return std::unexpected{"Index is out of range."};
-        }
-        const auto start = m_offsets[id];
-        const auto end = m_offsets[id + 1];
-        return std::span {m_edges.begin() + start, end - start};
-    }
-
-    template<node TNode, typename ... TExtension>
-    constexpr std::expected<std::span<const nodeid_t>, std::string> digraph<TNode, TExtension...>::in_edges(const nodeid_t id) const {
-        if (m_rev_offsets.size() - 1 <= id) {
-            return std::unexpected{"Index is out of range."};
-        }
-        const auto start = m_rev_offsets[id];
-        const auto end = m_rev_offsets[id + 1];
-        return std::span {m_rev_edges.begin() + start, end - start};
-    }
-
-    template<node TNode, typename ... TExtension>
+    template<typename TNode, typename ... TExtension>
     constexpr bool digraph<TNode, TExtension...>::is_acyclic() const {
         const auto n = count();
         if (n == 0) return true;
 
-        std::vector<std::size_t> in_degree(n);
+        std::vector<size_type> in_degree(n);
         std::vector<nodeid_t> queue;
         queue.reserve(n);
 
         for (nodeid_t u = 0; u < n; ++u) {
-            in_degree[u] = m_rev_offsets[u + 1] - m_rev_offsets[u];
-            if (in_degree[u] == 0) {
-                queue.emplace_back(u);
-            }
+            in_degree[u] = m_in_edges[u].size();
+            if (in_degree[u] == 0) queue.emplace_back(u);
         }
-        std::size_t head = 0;
-        while (head < queue.size()) {
-            const auto u = queue[head++];
 
-            if (auto edges = out_edges(u)) {
-                for (const auto v : *edges) {
-                    if (--in_degree[v] == 0) {
-                        queue.emplace_back(v);
-                    }
-                }
+        size_type head = 0;
+        while (head < queue.size()) {
+            for (const auto u = queue[head++]; const auto v : m_out_edges[u]) {
+                if (--in_degree[v] == 0) queue.emplace_back(v);
             }
         }
         return queue.size() == n;
     }
 
-    struct outbound {
-        constexpr auto operator()(const auto &g, nodeid_t node) const {
-            return g.out_edges(node);
-        }
+    struct _static_test_node {
+        int id;
     };
-
-    struct inbound {
-        constexpr auto operator()(const auto &g, nodeid_t node) const {
-            return g.in_edges(node);
-        }
-    };
+    static_assert(directed_graph<digraph<_static_test_node>>,
+        "Mutable digraph does not satisfy `directed_graph` concept");
 } // dagpp
 
 #endif //DAGPP_DIRECTED_GRAPH_H

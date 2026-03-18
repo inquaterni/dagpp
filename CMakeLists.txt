@@ -32,7 +32,10 @@ else ()
 endif()
 
 add_library(dagpp INTERFACE
-        include/dagpp.h)
+        include/dagpp.h
+        include/csr.h
+        include/usings.h
+        include/helpers.h)
 target_sources(dagpp INTERFACE
         FILE_SET HEADERS
         BASE_DIRS include
@@ -132,3 +135,4 @@ endif()
 
 enable_testing()
 add_subdirectory(tests)
+add_subdirectory(bench)

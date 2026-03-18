@@ -1,9 +1,6 @@
-//
-// Created by inquaterni on 3/17/26.
-//
 #include <filesystem>
 #include <fstream>
-#include "../include/csr.h"
+#include "../include/digraph.h"
 #include "gtest/gtest.h"
 
 
@@ -38,22 +35,16 @@ struct json_exporter {
     }
 };
 
-TEST(json_ext_test, full_program_test) {
-    dagpp::csr::digraph_builder<my_node> builder;
+TEST(json_ext_mut_test, full_program_test) {
+    dagpp::digraph<my_node, json_exporter> graph;
 
-    const auto a = builder.add_node({10});
-    const auto b = builder.add_node({20});
-    const auto c = builder.add_node({30});
+    const auto a = graph.add_node({10});
+    const auto b = graph.add_node({20});
+    const auto c = graph.add_node({30});
 
-    builder.add_edge(a, b);
-    builder.add_edge(a, c);
-    builder.add_edge(b, c);
-
-    // Compile graph with your custom extension
-    const auto graph = builder.compile<json_exporter>();
-    // You can also use multiple extensions
-    // const auto graph = builder.compile<json_exporter, dagpp::ext::dot_exporter>();
-
+    graph.add_edge(a, b);
+    graph.add_edge(a, c);
+    graph.add_edge(b, c);
 
     // Export graph to JSON
     std::ofstream out("graph.json");

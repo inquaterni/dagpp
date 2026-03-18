@@ -8,12 +8,12 @@
 #include <queue>
 #include <string>
 #include <vector>
-
-#include "digraph.h"
+#include "usings.h"
+#include "helpers.h"
 
 namespace dagpp {
-    template<node TNode, typename ...TExtension>
-    constexpr std::expected<std::vector<nodeid_t>, std::string> topo_sort(const digraph<TNode, TExtension...>& graph) {
+    template<directed_graph TGraph>
+    constexpr std::expected<std::vector<nodeid_t>, std::string> topo_sort(const TGraph& graph) {
         const auto n = graph.count();
         if (n == 0) return std::vector<nodeid_t>{};
 
