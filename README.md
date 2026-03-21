@@ -36,9 +36,10 @@ A simple and fast C++23 directed graph library.
 
 - **Mutable representation**: `dagpp::digraph` backed by internal vectors
 - **Immutable CSR option**: Highly compact `dagpp::csr::digraph` built via `dagpp::csr::digraph_builder`
+- **Weighted CSR option**: `dagpp::csr::wdigraph` built via `dagpp::csr::wdigraph_builder` for algorithms like Dijkstra
 - Both representations guarantee `out_edges()` / `in_edges()` return `std::span` views with zero extra allocation
 - Compile-time extensions via C++23 "Deducing This" (no vtables)
-- Topological sort (Kahn's) and `is_acyclic()` included
+- Topological sort (Kahn's), `is_acyclic()`, and **Dijkstra's Pathfinding** included
 - `std::expected` for errors; `-fno-exceptions` / `-fno-rtti` compatible
 - Header-only
 
@@ -55,6 +56,12 @@ csr::digraph_builder<TNode>     (mutable, accumulates nodes & edges)
         │  .compile<Ext1, Ext2, ...>()
         ▼
 csr::digraph<TNode, Ext1...>    (immutable CSR, inherits from each Ext)
+
+csr::wdigraph_builder<TNode, TWeight>  (accumulates nodes & weighted edges)
+        │
+        │  .compile<Ext1, ...>()
+        ▼
+csr::wdigraph<TNode, TWeight, Ext1...> (immutable CSR with edge weights)
 
 # Both representations satisfy the common graph interface:
         ├── .out_edges(id)       → std::expected<std::span<const nodeid_t>, string>
@@ -77,6 +84,15 @@ concept directed_graph = requires (const T &t, dagpp::nodeid_t id)
     {t.is_acyclic()}   -> std::same_as<bool>;
     {t.node(id)}       -> std::convertible_to<typename T::node_type>;
     {t.count()}        -> std::same_as<typename T::size_type>;
+};
+
+template <typename T>
+concept wdirected_graph = directed_graph<T> && requires (const T &t, dagpp::nodeid_t id)
+{
+    typename T::weight_type;
+    requires std::floating_point<typename T::weight_type> || std::integral<typename T::weight_type>;
+    {*t.out_weights(id)} -> std::convertible_to<std::span<const typename T::weight_type>>;
+    {*t.in_weights(id)}  -> std::convertible_to<std::span<const typename T::weight_type>>;
 };
 ```
 
@@ -382,6 +398,17 @@ graph.to_dot([](std::size_t i, const Node& n) { ... }, dot_out);
 
 Edge spans (`std::span<const nodeid_t>`) are zero-copy views into the internal CSR arrays.
 
+### `csr::wdigraph<TNode, TWeight, TExtension...>`
+
+Similar to `csr::digraph`, but additionally provides:
+
+| Method                      | Return Type                                               | Description                                        |
+|-----------------------------|-----------------------------------------------------------|----------------------------------------------------|
+| `out_weights(nodeid_t id)`  | `std::expected<std::span<const TWeight>, std::string>`    | Outbound weights; error if `id` is out of range    |
+| `in_weights(nodeid_t id)`   | `std::expected<std::span<const TWeight>, std::string>`    | Inbound weights; error if `id` is out of range     |
+
+And `wdigraph_builder::add_edge` takes a third parameter for the `weight` (defaults to 1).
+
 ### `topo_sort`
 
 ```cpp
@@ -391,6 +418,18 @@ constexpr std::expected<std::vector<nodeid_t>, std::string>
 ```
 
 Kahn's BFS-based topological sort. Returns the sorted node id sequence, or `std::unexpected{"Graph contains a cycle."}` if a cycle is detected.
+
+---
+
+### `dijkstra`
+
+```cpp
+template <wdirected_graph TGraph>
+constexpr dejikstra_result<typename TGraph::weight_type>
+    dagpp::dijkstra(const TGraph& g, nodeid_t source);
+```
+
+Computes shortest paths using Dijkstra's algorithm. Returns a result struct containing `.distances` and `.previous` path vectors. Fully `constexpr` compatible since C++20.
 
 ---
 
