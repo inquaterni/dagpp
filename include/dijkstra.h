@@ -8,6 +8,7 @@
 #include <vector>
 #include <limits>
 #include <algorithm>
+#include <ranges>
 #include "helpers.h"
 #include "usings.h"
 
@@ -46,7 +47,7 @@ namespace dagpp {
         };
         
         std::vector<pq_element> pq;
-        pq.push_back({0, source});
+        pq.push_back(pq_element{0, source});
         
         while (!pq.empty()) {
             std::pop_heap(pq.begin(), pq.end(), std::greater<pq_element>{});
@@ -63,7 +64,7 @@ namespace dagpp {
                     if (result.distances[u] + weight < result.distances[v]) {
                         result.distances[v] = result.distances[u] + weight;
                         result.previous[v] = u;
-                        pq.push_back({result.distances[v], v});
+                        pq.push_back(pq_element{result.distances[v], v});
                         std::push_heap(pq.begin(), pq.end(), std::greater<pq_element>{});
                     }
                 }

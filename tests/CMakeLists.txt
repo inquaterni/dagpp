@@ -29,4 +29,8 @@ target_link_libraries(dagpp_tests
 include(GoogleTest)
 gtest_discover_tests(dagpp_tests)
 
-target_compile_options(dagpp_tests PRIVATE "-Wall" "-Wextra" "-Wpedantic")
+if(MSVC)
+    add_compile_options(/W4 /WX)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
