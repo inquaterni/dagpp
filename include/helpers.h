@@ -8,6 +8,9 @@
 #include "usings.h"
 
 namespace dagpp {
+    template<typename T>
+    concept number = std::integral<T> || std::floating_point<T>;
+
     template <typename T>
     concept directed_graph = requires (const T &t, nodeid_t id)
     {
@@ -18,6 +21,15 @@ namespace dagpp {
         {t.is_acyclic()} -> std::same_as<bool>;
         {t.node(id)} -> std::convertible_to<typename T::node_type>;
         {t.count()} -> std::same_as<typename T::size_type>;
+    };
+
+    template<typename T>
+    concept wdirected_graph = directed_graph<T> && requires (const T &t, nodeid_t id)
+    {
+        typename T::weight_type;
+        requires std::floating_point<typename T::weight_type> || std::integral<typename T::weight_type>;
+        {*t.out_weights(id)} -> std::convertible_to<std::span<const typename T::weight_type>>;
+        {*t.in_weights(id)} -> std::convertible_to<std::span<const typename T::weight_type>>;
     };
 
     struct outbound {
