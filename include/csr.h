@@ -78,7 +78,8 @@ namespace dagpp::csr {
         constexpr wdigraph<TNode, TWeight, TExtension...> compile();
     private:
         struct edge_t {
-            nodeid_t from, to;
+            nodeid_t from;
+            nodeid_t to;
             TWeight weight;
         };
         std::vector<TNode> m_nodes;
@@ -106,7 +107,7 @@ namespace dagpp::csr {
         [[nodiscard]]
         constexpr bool is_acyclic() const;
     protected:
-        friend class digraph_builder<node_type>;
+        friend class wdigraph_builder<node_type, weight_type>;
         std::vector<node_type> m_nodes;
         std::vector<edgeid_t> m_offsets;
         std::vector<nodeid_t> m_edges;
@@ -187,10 +188,6 @@ namespace dagpp::csr {
 
     template<node TNode, typename... TExtension>
     constexpr const TNode &digraph<TNode, TExtension...>::node(nodeid_t id) const {
-        if (m_nodes.size() <= id) {
-            return std::unexpected{"Index is out of range."};
-        }
-
         return m_nodes[id];
     }
 
@@ -329,10 +326,6 @@ namespace dagpp::csr {
 
     template<node TNode, number TWeight, typename ... TExtension>
     constexpr const wdigraph<TNode, TWeight, TExtension...>::node_type &wdigraph<TNode, TWeight, TExtension...>::node(nodeid_t id) const {
-        if (m_nodes.size() <= id) {
-            return std::unexpected{"Index is out of range."};
-        }
-
         return m_nodes[id];
     }
 
@@ -365,24 +358,24 @@ namespace dagpp::csr {
 
     template<node TNode, number TWeight, typename ... TExtension>
     constexpr std::expected<std::span<const typename wdigraph<TNode, TWeight, TExtension...>::weight_type>, std::string>
-    wdigraph<TNode, TWeight, TExtension...>::out_weights(nodeid_t id) const {
-        if (m_weights.size() - 1 <= id) {
+    wdigraph<TNode, TWeight, TExtension...>::out_weights(const nodeid_t id) const {
+        if (m_offsets.size() - 1 <= id) {
             return std::unexpected{"Index is out of range."};
         }
-        const auto start = m_weights[id];
-        const auto end = m_weights[id + 1];
-        return std::span {m_weights.begin() + start, end - start};
+        const auto start = m_offsets[id];
+        const auto end = m_offsets[id + 1];
+        return std::span {m_weights.begin() + start, static_cast<std::size_t>(end - start)};
     }
 
     template<node TNode, number TWeight, typename ... TExtension>
     constexpr std::expected<std::span<const typename wdigraph<TNode, TWeight, TExtension...>::weight_type>, std::string>
-    wdigraph<TNode, TWeight, TExtension...>::in_weights(nodeid_t id) const {
-        if (m_rev_weights.size() - 1 <= id) {
+    wdigraph<TNode, TWeight, TExtension...>::in_weights(const nodeid_t id) const {
+        if (m_rev_offsets.size() - 1 <= id) {
             return std::unexpected{"Index is out of range."};
         }
-        const auto start = m_rev_weights[id];
-        const auto end = m_rev_weights[id + 1];
-        return std::span {m_rev_edges.begin() + start, end - start};
+        const auto start = m_rev_offsets[id];
+        const auto end = m_rev_offsets[id + 1];
+        return std::span {m_rev_weights.begin() + start, static_cast<std::size_t>(end - start)};
     }
 
     template<node TNode, number TWeight, typename ... TExtension>

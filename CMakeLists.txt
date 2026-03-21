@@ -31,7 +31,8 @@ else ()
     message(STATUS "No ccache found on the machine.")
 endif()
 
-add_library(dagpp INTERFACE)
+add_library(dagpp INTERFACE
+        include/dijkstra.h)
 target_sources(dagpp INTERFACE
         FILE_SET HEADERS
         BASE_DIRS include

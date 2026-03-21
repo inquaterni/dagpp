@@ -12,7 +12,9 @@ add_executable(dagpp_tests
         mut_json_ext_test.cpp
         mut_basic_usage.cpp
         csr_digraph_test.cpp
+        csr_wdigraph_test.cpp
         ext_dot_exporter_test.cpp
+        dijkstra_test.cpp
         topo_sort_test.cpp
         global.h
         in_edges_acyclic_test.cpp
@@ -26,3 +28,5 @@ target_link_libraries(dagpp_tests
 
 include(GoogleTest)
 gtest_discover_tests(dagpp_tests)
+
+target_compile_options(dagpp_tests PRIVATE "-Wall" "-Wextra" "-Wpedantic")

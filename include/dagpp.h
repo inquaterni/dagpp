@@ -8,5 +8,6 @@
 #include "digraph.h"
 #include "csr.h"
 #include "topo_sort.h"
+#include "dijkstra.h"
 
 #endif //DAGPP_DAGPP_H

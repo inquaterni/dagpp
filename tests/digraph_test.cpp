@@ -98,7 +98,7 @@ TEST(digraph_test, reserve_nodes_and_add_rvalue) {
     dagpp::digraph<test_node> graph;
     graph.reserve_nodes(2);
     const auto id1 = graph.add_node(test_node{10});
-    const auto id2 = graph.add_node(test_node{20});
+    const auto _ = graph.add_node(test_node{20});
     EXPECT_EQ(graph.count(), 2);
     
     const dagpp::digraph<test_node>& const_graph = graph;
