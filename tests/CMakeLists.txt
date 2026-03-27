@@ -11,6 +11,7 @@ add_executable(dagpp_tests
         digraph_test.cpp
         mut_json_ext_test.cpp
         mut_basic_usage.cpp
+        mut_wdigraph_test.cpp
         csr_digraph_test.cpp
         csr_wdigraph_test.cpp
         ext_dot_exporter_test.cpp

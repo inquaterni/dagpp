@@ -7,6 +7,7 @@ A simple and fast C++23 directed graph library.
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![CI](https://github.com/inquaterni/dagpp/actions/workflows/cmake-multi-platform.yml/badge.svg)
 [![codecov](https://codecov.io/github/inquaterni/dagpp/graph/badge.svg?token=R85MIRY2FG)](https://codecov.io/github/inquaterni/dagpp)
+
 ## Table of Contents
 
 - [Features](#features)
@@ -14,6 +15,7 @@ A simple and fast C++23 directed graph library.
 - [Build instructions](#build-instructions)
 - [Quick start](#quick-start)
   - [Basic usage](#basic-usage)
+  - [Weighted mutable graph](#weighted-mutable-graph)
   - [In-edges & Cycle detection](#in-edges--cycle-detection)
   - [Topological sort](#topological-sort)
   - [DOT export (built-in extension)](#dot-export-built-in-extension)
@@ -22,9 +24,12 @@ A simple and fast C++23 directed graph library.
   - [Multiple extensions](#multiple-extensions)
 - [API reference](#api-reference)
   - [digraph\<TNode, TExtension...\>](#digraphtnode-textension)
+  - [wdigraph\<TNode, TWeight, TExtension...\>](#wdigraphtnode-tweight-textension)
   - [csr::digraph_builder\<TNode\>](#csrdigraph_buildertnode)
   - [csr::digraph\<TNode, TExtension...\>](#csrdigraphtnode-textension)
+  - [csr::wdigraph\<TNode, TWeight, TExtension...\>](#csrwdigraphtnode-tweight-textension)
   - [topo_sort](#topo_sort)
+  - [dijkstra](#dijkstra)
   - [dagpp::ext::dot_exporter](#dagppextdot_exporter)
 - [CMake options](#cmake-options)
 - [Benchmarks](#benchmarks)
@@ -35,6 +40,7 @@ A simple and fast C++23 directed graph library.
 ## Features
 
 - **Mutable representation**: `dagpp::digraph` backed by internal vectors
+- **Mutable weighted option**: `dagpp::wdigraph` — mutable weighted graph satisfying the `wdirected_graph` concept
 - **Immutable CSR option**: Highly compact `dagpp::csr::digraph` built via `dagpp::csr::digraph_builder`
 - **Weighted CSR option**: `dagpp::csr::wdigraph` built via `dagpp::csr::wdigraph_builder` for algorithms like Dijkstra
 - Both representations guarantee `out_edges()` / `in_edges()` return `std::span` views with zero extra allocation
@@ -51,6 +57,13 @@ digraph<TNode, Ext...>          (mutable, dynamic)
         ├── .add_edge(from, to)
         ├── <Ext methods ...>    (zero-cost mixins)
 
+wdigraph<TNode, TWeight, Ext...> (mutable, dynamic, weighted)
+        ├── .add_node(TNode)          → nodeid_t
+        ├── .add_edge(from, to, w)
+        ├── .out_weights(id)          → std::expected<std::span<const TWeight>, string>
+        ├── .in_weights(id)           → std::expected<std::span<const TWeight>, string>
+        ├── <Ext methods ...>
+
 csr::digraph_builder<TNode>     (mutable, accumulates nodes & edges)
         │
         │  .compile<Ext1, Ext2, ...>()
@@ -63,13 +76,13 @@ csr::wdigraph_builder<TNode, TWeight>  (accumulates nodes & weighted edges)
         ▼
 csr::wdigraph<TNode, TWeight, Ext1...> (immutable CSR with edge weights)
 
-# Both representations satisfy the common graph interface:
+# All representations satisfy the common graph interface:
         ├── .out_edges(id)       → std::expected<std::span<const nodeid_t>, string>
         ├── .in_edges(id)        → std::expected<std::span<const nodeid_t>, string>
         ├── .node(id)            → const TNode&
         ├── .count()             → std::size_t
         ├── .is_acyclic()        → bool
-        └── <Ext methods ...>    (zero-cost mixins)
+        └── <Ext methods ...>
 ```
 
 Both implementations satisfy the `dagpp::directed_graph` concept:
@@ -139,6 +152,35 @@ int main() {
     }
 
     std::cout << "Node 0: " << graph.node(0).name << "\n";
+
+    return 0;
+}
+```
+
+#### Weighted mutable graph
+
+The mutable `wdigraph` adds per-edge weights and satisfies the `wdirected_graph` concept directly — no build step required.
+
+```cpp
+#include <iostream>
+#include <dagpp.h>
+
+struct Node { int id; };
+
+int main() {
+    dagpp::wdigraph<Node, int> graph;
+
+    const auto a = graph.add_node({0});
+    const auto b = graph.add_node({1});
+    const auto c = graph.add_node({2});
+
+    graph.add_edge(a, b, 4);
+    graph.add_edge(a, c, 1);
+    graph.add_edge(c, b, 2);
+
+    // Run Dijkstra directly on the mutable graph
+    const auto result = dagpp::dijkstra(graph, a);
+    std::cout << "Shortest distance a→b: " << result.distances[b] << "\n"; // 3
 
     return 0;
 }
@@ -376,15 +418,36 @@ graph.to_dot([](std::size_t i, const Node& n) { ... }, dot_out);
 
 ---
 
+### `wdigraph<TNode, TWeight, TExtension...>`
+
+Mutable weighted digraph. Extends `digraph` with per-edge weights on both forward and reverse adjacency lists.
+
+| Method | Return Type | Description |
+|---|---|---|
+| `add_node(TNode)` | `nodeid_t` | Appends a node and returns its stable id |
+| `add_edge(nodeid_t from, nodeid_t to, TWeight weight)` | `void` | Records a weighted directed edge |
+| `reserve_nodes(size_t n)` | `void` | Pre-allocates node and adjacency storage |
+| `node(nodeid_t id)` | `const TNode&` or `TNode&` | Returns the node data at `id` |
+| `count()` | `std::size_t` | Total number of nodes |
+| `out_edges(nodeid_t id)` | `std::expected<std::span<const nodeid_t>, std::string>` | Outbound neighbour ids; error if `id` is out of range |
+| `in_edges(nodeid_t id)` | `std::expected<std::span<const nodeid_t>, std::string>` | Inbound neighbour ids; error if `id` is out of range |
+| `out_weights(nodeid_t id)` | `std::expected<std::span<const TWeight>, std::string>` | Outbound weights; error if `id` is out of range |
+| `in_weights(nodeid_t id)` | `std::expected<std::span<const TWeight>, std::string>` | Inbound weights; error if `id` is out of range |
+| `is_acyclic()` | `bool` | `true` if the graph is a DAG; O(V + E) |
+
+`TWeight` must satisfy the `number` concept (`std::integral` or `std::floating_point`).
+
+---
+
 ### `csr::digraph_builder<TNode>`
 
-| Method                                          | Description                                                                    |
-|-------------------------------------------------|--------------------------------------------------------------------------------|
-| `nodeid_t add_node(TNode)`                      | Appends a node and returns its stable id                                       |
-| `void add_edge(nodeid_t from, nodeid_t to)`     | Records a directed edge                                                        |
-| `void reserve_nodes(size_t n)`                  | Pre-allocates node storage                                                     |
-| `void reserve_edges(size_t n)`                  | Pre-allocates edge storage                                                     |
-| `csr::digraph<TNode, Ext...> compile<Ext...>()` | Builds the immutable CSR graph; `builder` should not be reused after this call |
+| Method                                  | Return Type                     | Description                                                                    |
+|-----------------------------------------|---------------------------------|--------------------------------------------------------------------------------|
+| `add_node(TNode)`                       | `nodeid_t`                      | Appends a node and returns its stable id                                       |
+| `add_edge(nodeid_t from, nodeid_t to)`  | `void`                          | Records a directed edge                                                        |
+| `reserve_nodes(size_t n)`               | `void`                          | Pre-allocates node storage                                                     |
+| `reserve_edges(size_t n)`               | `void`                          | Pre-allocates edge storage                                                     |
+| `compile<Ext...>()`                     | `csr::digraph<TNode, Ext...>`   | Builds the immutable CSR graph; `builder` should not be reused after this call |
 
 ### `csr::digraph<TNode, TExtension...>`
 
@@ -407,7 +470,7 @@ Similar to `csr::digraph`, but additionally provides:
 | `out_weights(nodeid_t id)`  | `std::expected<std::span<const TWeight>, std::string>`    | Outbound weights; error if `id` is out of range    |
 | `in_weights(nodeid_t id)`   | `std::expected<std::span<const TWeight>, std::string>`    | Inbound weights; error if `id` is out of range     |
 
-And `wdigraph_builder::add_edge` takes a third parameter for the `weight` (defaults to 1).
+And `wdigraph_builder::add_edge` takes a third parameter for the `weight`.
 
 ### `topo_sort`
 
@@ -425,11 +488,11 @@ Kahn's BFS-based topological sort. Returns the sorted node id sequence, or `std:
 
 ```cpp
 template <wdirected_graph TGraph>
-constexpr dejikstra_result<typename TGraph::weight_type>
+constexpr dijkstra_result<typename TGraph::weight_type>
     dagpp::dijkstra(const TGraph& g, nodeid_t source);
 ```
 
-Computes shortest paths using Dijkstra's algorithm. Returns a result struct containing `.distances` and `.previous` path vectors. Fully `constexpr` compatible since C++20.
+Computes shortest paths using Dijkstra's algorithm. Returns a result struct containing `.distances` and `.previous` path vectors. Fully `constexpr` compatible.
 
 ---
 
@@ -437,10 +500,12 @@ Computes shortest paths using Dijkstra's algorithm. Returns a result struct cont
 
 ```cpp
 template<typename TDir = dagpp::outbound, directed_graph TSelf, typename Pred>
-void to_dot(this const TSelf& self,
-            const Pred& label_pred,
-            std::ofstream& out,
-            TDir cmp = TDir{});
+requires std::invocable<Pred, std::size_t, typename TSelf::node_type> &&
+         std::convertible_to<std::invoke_result_t<Pred, typename TSelf::size_type, typename TSelf::node_type>, std::string>
+constexpr void to_dot(this const TSelf& self,
+                      const Pred& label_pred,
+                      std::ofstream& out,
+                      TDir cmp = TDir{});
 ```
 
 | Parameter    | Description                                                                       |
