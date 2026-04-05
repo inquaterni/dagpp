@@ -1,6 +1,18 @@
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <gtest/gtest.h>
-#include "../include/csr.h"
 #include "global.h"
+
+import dagpp.csr;
+import dagpp.usings;
 
 TEST(csr_digraph_test, empty_graph) {
     dagpp::csr::digraph_builder<test_node> builder;

@@ -1,17 +1,20 @@
-//
-// Created by inquaterni on 3/18/26.
-//
-
-#ifndef DAGPP_CSR_H
-#define DAGPP_CSR_H
+module;
 #include <concepts>
 #include <vector>
 #include <queue>
 #include <expected>
-#include "usings.h"
-#include "helpers.h"
+#include <span>
+#include <string>
 
-namespace dagpp::csr {
+export module dagpp.csr;
+import dagpp.usings;
+import dagpp.helpers;
+
+//
+// Created by inquaterni on 3/18/26.
+//
+
+export namespace dagpp::csr {
     template<typename T>
     concept node = std::semiregular<T>;
 
@@ -416,5 +419,3 @@ namespace dagpp::csr {
     static_assert(wdirected_graph<wdigraph<_static_test_node, int>>,
         "Immutable CSR graph does not satisfy `wdirected_graph` concept");
 }
-
-#endif //DAGPP_CSR_H

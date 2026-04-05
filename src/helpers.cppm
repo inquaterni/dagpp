@@ -1,13 +1,11 @@
-//
-// Created by inquaterni on 3/18/26.
-//
-
-#ifndef DAGPP_HELPERS_H
-#define DAGPP_HELPERS_H
+module;
 #include <span>
-#include "usings.h"
+#include <concepts>
 
-namespace dagpp {
+export module dagpp.helpers;
+import dagpp.usings;
+
+export namespace dagpp {
     template<typename T>
     concept number = std::integral<T> || std::floating_point<T>;
 
@@ -46,5 +44,3 @@ namespace dagpp {
         }
     };
 } // dagpp
-
-#endif //DAGPP_HELPERS_H

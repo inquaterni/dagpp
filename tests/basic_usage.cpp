@@ -1,15 +1,24 @@
 //
 // Created by inquaterni on 3/17/26.
 //
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <iostream>
-#include "../include/csr.h"
-#include "../include/topo_sort.h"
-#include "../include/dot.h" // Optional: for DOT export
 #include "gtest/gtest.h"
 
+import dagpp.csr;
+import dagpp.topo_sort;
+import dagpp.ext.dot;
+import dagpp.usings;
 
-// Node data
-// NOTE: as of now node type MUST be trivial.
 struct my_node {
     int id;
 };

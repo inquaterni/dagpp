@@ -1,11 +1,23 @@
 //
 // Created by inquaterni on 3/17/26.
 //
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <gtest/gtest.h>
-#include "../include/csr.h"
-#include "../include/digraph.h"
-#include "../include/topo_sort.h"
 #include "global.h"
+
+import dagpp.csr;
+import dagpp.digraph;
+import dagpp.topo_sort;
+import dagpp.usings;
 
 TEST(topo_sort_test, empty_csr_graph) {
     dagpp::csr::digraph_builder<test_node> builder;

@@ -1,7 +1,19 @@
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <gtest/gtest.h>
-#include "../include/csr.h"
-#include "../include/dijkstra.h"
 #include "global.h"
+
+import dagpp.csr;
+import dagpp.dijkstra;
+import dagpp.usings;
 
 TEST(dijkstra_test, simple_path) {
     dagpp::csr::wdigraph_builder<test_node, int> builder;

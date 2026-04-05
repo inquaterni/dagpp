@@ -1,7 +1,19 @@
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <gtest/gtest.h>
-#include "../include/digraph.h"
-#include "../include/dijkstra.h"
 #include "global.h"
+
+import dagpp.digraph;
+import dagpp.dijkstra;
+import dagpp.usings;
 
 TEST(mut_wdigraph_test, empty_graph) {
     const dagpp::wdigraph<test_node, int> graph;

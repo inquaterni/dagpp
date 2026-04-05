@@ -8,6 +8,9 @@ A simple and fast C++23 directed graph library.
 ![CI](https://github.com/inquaterni/dagpp/actions/workflows/cmake-multi-platform.yml/badge.svg)
 [![codecov](https://codecov.io/github/inquaterni/dagpp/graph/badge.svg?token=R85MIRY2FG)](https://codecov.io/github/inquaterni/dagpp)
 
+> [!WARNING]
+> **This is an experimental C++20 modules branch.** The public API is accessed via named module imports (e.g. `import dagpp.digraph;`, `import dagpp.csr;`) instead of header includes. Requires GCC 14+ with `-fmodules-ts` and CMake 3.28+. This branch is not yet stable and the module interface may change.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -130,7 +133,8 @@ cd build && ctest --output-on-failure
 
 ```cpp
 #include <iostream>
-#include <dagpp.h>
+
+import dagpp.digraph;
 
 struct Task {
     int id;
@@ -163,7 +167,9 @@ The mutable `wdigraph` adds per-edge weights and satisfies the `wdirected_graph`
 
 ```cpp
 #include <iostream>
-#include <dagpp.h>
+
+import dagpp.digraph;
+import dagpp.dijkstra;
 
 struct Node { int id; };
 
@@ -192,7 +198,8 @@ When your graph topology is final, use the highly compact `csr::digraph`:
 
 ```cpp
 #include <iostream>
-#include <dagpp.h>
+
+import dagpp.csr;
 
 // Node data must satisfy std::semiregular ONLY for the CSR graph
 struct Node { 
@@ -227,7 +234,9 @@ int main() {
 The reverse adjacency list is built alongside the forward one during `compile()`.
 
 ```cpp
-#include <dagpp.h>
+#include <iostream>
+
+import dagpp.csr;
 
 struct Node { int value; };
 
@@ -257,11 +266,13 @@ int main() {
 
 ### Topological sort
 
-`topo_sort` is a free function in `<topo_sort.h>` (included via `<dagpp.h>`).
+`topo_sort` is a free function in the `dagpp.topo_sort` module.
 
 ```cpp
 #include <iostream>
-#include <dagpp.h>
+
+import dagpp.digraph;
+import dagpp.topo_sort;
 
 struct Node { int id; };
 
@@ -291,14 +302,15 @@ int main() {
 
 ### DOT export (built-in extension)
 
-Include `<dot.h>` and mix in `dagpp::ext::dot_exporter` at compile time.
+Mix in `dagpp::ext::dot_exporter` at compile time via `import dagpp.ext.dot;`.
 Edge direction can be reversed by passing `dagpp::inbound{}` as the direction policy.
 
 ```cpp
 #include <fstream>
-#include <format>
-#include <dagpp.h>
-#include <dot.h>
+
+import dagpp.digraph;
+import dagpp.ext.dot;
+import dagpp.helpers; // for dagpp::inbound / dagpp::outbound
 
 struct Node { int id; };
 
@@ -340,7 +352,8 @@ void my_method(this const TSelf& self) {
 
 ```cpp
 #include <fstream>
-#include <dagpp.h>
+
+import dagpp.digraph;
 
 struct Node { int id; };
 

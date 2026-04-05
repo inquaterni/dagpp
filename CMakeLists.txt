@@ -1,15 +1,9 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.28)
 project(dagpp)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(DAGPP_INCLUDES
-        include/digraph.h
-        include/dot.h
-        include/topo_sort.h
-        include/dagpp.h
-)
 
 option(DAGPP_ENABLE_LTO "Enable LTO" ON)
 option(DAGPP_BUILD_NATIVE "Enable native build" ON)
@@ -31,24 +25,7 @@ else ()
     message(STATUS "No ccache found on the machine.")
 endif()
 
-add_library(dagpp INTERFACE
-        include/dijkstra.h)
-target_sources(dagpp INTERFACE
-        FILE_SET HEADERS
-        BASE_DIRS include
-        FILES
-        include/digraph.h
-        include/dot.h
-        include/topo_sort.h
-        include/dagpp.h
-        include/helpers.h
-        include/usings.h
-        include/csr.h
-)
-target_include_directories(dagpp INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-)
+
 
 if(UNIX AND NOT APPLE)
     if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -153,6 +130,23 @@ if(CMAKE_BUILD_TYPE MATCHES Release)
         endif()
     endif()
 endif()
+
+add_library(dagpp)
+target_sources(dagpp
+        PUBLIC FILE_SET CXX_MODULES
+        FILES
+        src/usings.cppm
+        src/helpers.cppm
+        src/digraph.cppm
+        src/csr.cppm
+        src/topo_sort.cppm
+        src/dijkstra.cppm
+        src/dot.cppm
+)
+target_include_directories(dagpp
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        PUBLIC $<INSTALL_INTERFACE:include>
+)
 
 enable_testing()
 add_subdirectory(tests)

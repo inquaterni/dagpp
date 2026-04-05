@@ -1,8 +1,17 @@
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <format>
+#include <cstddef>
+
 #include <filesystem>
 #include <fstream>
-#include "../include/digraph.h"
 #include "gtest/gtest.h"
 
+import dagpp.digraph;
+import dagpp.usings;
 
 struct my_node {
     int id;

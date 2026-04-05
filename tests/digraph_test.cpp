@@ -1,6 +1,18 @@
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <gtest/gtest.h>
-#include "../include/digraph.h"
 #include "global.h"
+
+import dagpp.digraph;
+import dagpp.usings;
 
 TEST(digraph_test, empty_graph) {
     const dagpp::digraph<test_node> graph;

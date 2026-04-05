@@ -1,16 +1,18 @@
-//
-// Created by inquaterni on 3/17/26.
-//
-
-#ifndef DAGPP_EXT_H
-#define DAGPP_EXT_H
+module;
 #include <filesystem>
 #include <fstream>
 #include <format>
 
-#include "digraph.h"
+export module dagpp.ext.dot;
+import dagpp.digraph;
+import dagpp.helpers;
+import dagpp.usings;
 
-namespace dagpp::ext {
+//
+// Created by inquaterni on 3/17/26.
+//
+
+export namespace dagpp::ext {
     class dot_exporter {
     public:
         template<typename TDir = outbound, directed_graph TSelf, typename Pred>
@@ -31,5 +33,3 @@ namespace dagpp::ext {
         }
     };
 } // dagpp::ext
-
-#endif //DAGPP_EXT_H

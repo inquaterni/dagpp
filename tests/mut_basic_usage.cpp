@@ -1,12 +1,21 @@
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <iostream>
-#include "../include/digraph.h"
-#include "../include/topo_sort.h"
-#include "../include/dot.h" // Optional: for DOT export
 #include "gtest/gtest.h"
 
+import dagpp.digraph;
+import dagpp.topo_sort;
+import dagpp.ext.dot;
+import dagpp.usings;
 
-// Node data
-// NOTE: node type doesn't have to be trivial, but should be semiregular
 struct my_node {
     int id;
 };

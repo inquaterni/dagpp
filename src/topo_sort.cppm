@@ -1,17 +1,18 @@
-//
-// Created by inquaterni on 3/17/26.
-//
-
-#ifndef DAGPP_TOPO_SORT_H
-#define DAGPP_TOPO_SORT_H
+module;
 #include <expected>
 #include <queue>
 #include <string>
 #include <vector>
-#include "usings.h"
-#include "helpers.h"
 
-namespace dagpp {
+export module dagpp.topo_sort;
+import dagpp.usings;
+import dagpp.helpers;
+
+//
+// Created by inquaterni on 3/17/26.
+//
+
+export namespace dagpp {
     template<directed_graph TGraph>
     constexpr std::expected<std::vector<nodeid_t>, std::string> topo_sort(const TGraph& graph) {
         const auto n = graph.count();
@@ -55,5 +56,3 @@ namespace dagpp {
         return order;
     }
 } // dagpp
-
-#endif //DAGPP_TOPO_SORT_H

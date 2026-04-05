@@ -1,10 +1,24 @@
 //
 // Created by inquaterni on 3/17/26.
 //
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <gtest/gtest.h>
-#include "../include/csr.h"
-#include "../include/dot.h"
 #include "global.h"
+
+import dagpp.csr;
+import dagpp.digraph;
+import dagpp.ext.dot;
+import dagpp.helpers;
+import dagpp.usings;
 
 TEST(dot_exporter_test, empty_csr_graph_outbound) {
     dagpp::csr::digraph_builder<test_node> builder;

@@ -1,10 +1,22 @@
 //
 // Created by inquaterni on 3/17/26.
 //
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <filesystem>
+#include <fstream>
+#include <format>
+#include <cstddef>
+
 #include <gtest/gtest.h>
-#include "../include/csr.h"
-#include "../include/digraph.h"
 #include "global.h"
+
+import dagpp.csr;
+import dagpp.digraph;
+import dagpp.usings;
 
 TEST(csr_digraph_test, in_edges_diamond) {
     // A -> B, A -> C, B -> D, C -> D

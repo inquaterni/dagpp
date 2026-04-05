@@ -1,18 +1,19 @@
-//
-// Created by inquaterni on 3/17/26.
-//
-
-#ifndef DAGPP_DIRECTED_GRAPH_H
-#define DAGPP_DIRECTED_GRAPH_H
+module;
 #include <vector>
 #include <expected>
 #include <span>
 #include <string>
 
-#include "usings.h"
-#include "helpers.h"
+export module dagpp.digraph;
+import dagpp.usings;
+import dagpp.helpers;
 
-namespace dagpp {
+//
+// Created by inquaterni on 3/17/26.
+//
+
+
+export namespace dagpp {
     template <typename TNode, typename ...TExtension>
     class digraph: public TExtension... {
     public:
@@ -249,5 +250,3 @@ namespace dagpp {
         "Mutable wdigraph does not satisfy `wdirected_graph` concept");
 
 } // dagpp
-
-#endif //DAGPP_DIRECTED_GRAPH_H

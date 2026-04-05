@@ -1,11 +1,20 @@
 //
 // Created by inquaterni on 3/17/26.
 //
+#include <vector>
+#include <string>
+#include <expected>
+#include <span>
+#include <limits>
+#include <format>
+#include <cstddef>
+
 #include <filesystem>
 #include <fstream>
-#include "../include/csr.h"
 #include "gtest/gtest.h"
 
+import dagpp.csr;
+import dagpp.usings;
 
 struct my_node {
     int id;

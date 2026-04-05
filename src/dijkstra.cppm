@@ -1,18 +1,18 @@
-//
-// Created by inquaterni on 3/21/26.
-//
-
-#ifndef DAGPP_DIJKSTRA_H
-#define DAGPP_DIJKSTRA_H
-
+module;
 #include <vector>
 #include <limits>
 #include <algorithm>
 #include <ranges>
-#include "helpers.h"
-#include "usings.h"
 
-namespace dagpp {
+export module dagpp.dijkstra;
+import dagpp.usings;
+import dagpp.helpers;
+
+//
+// Created by inquaterni on 3/21/26.
+//
+
+export namespace dagpp {
 
     template<number TWeight>
     struct dijkstra_result {
@@ -75,5 +75,3 @@ namespace dagpp {
     }
 
 } // namespace dagpp
-
-#endif //DAGPP_DIJKSTRA_H
