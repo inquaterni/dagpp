@@ -3,7 +3,7 @@
 A simple and fast C++23 directed graph library.
 
 ![C++23](https://img.shields.io/badge/C%2B%2B-23-blue?logo=c%2B%2B)
-![CMake](https://img.shields.io/badge/CMake-3.31%2B-064F8C?logo=cmake)
+![CMake](https://img.shields.io/badge/CMake-3.28%2B-064F8C?logo=cmake)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 ![CI](https://github.com/inquaterni/dagpp/actions/workflows/cmake-multi-platform.yml/badge.svg)
 [![codecov](https://codecov.io/github/inquaterni/dagpp/graph/badge.svg?token=R85MIRY2FG)](https://codecov.io/github/inquaterni/dagpp)
@@ -114,7 +114,7 @@ concept wdirected_graph = directed_graph<T> && requires (const T &t, dagpp::node
 
 ## Build instructions
 
-Requires a **C++23** compliant compiler (GCC 14 / Clang 17 or newer) and **CMake 3.31+**.
+Requires a **C++23** compliant compiler (GCC 14 / Clang 17 or newer) and **CMake 3.28+**.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
