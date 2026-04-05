@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
+option(DAGPP_ENABLE_CCACHE "Enable ccache" OFF)
 option(DAGPP_ENABLE_LTO "Enable LTO" ON)
 option(DAGPP_BUILD_NATIVE "Enable native build" ON)
 option(DAGPP_ENABLE_AVX10 "Enable AVX10.1 instructions (if not building native)" ON)
@@ -15,14 +16,15 @@ option(DAGPP_ENABLE_NO_EXCEPT "Enable -fno-exception flag." ON)
 option(DAGPP_ENABLE_NO_RTTI "Enable -fno-rtti flag." ON)
 option(DAGPP_ENABLE_FAST_MATH "Enable -ffast-math optimizations. Not recommended" OFF)
 
-
+if(DAGPP_ENABLE_CCACHE)
 find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
-    message(STATUS "Using CCache: ${CCACHE_PROGRAM}")
-    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-else ()
-    message(STATUS "No ccache found on the machine.")
+    if(CCACHE_PROGRAM)
+        message(STATUS "Using CCache: ${CCACHE_PROGRAM}")
+        set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    else ()
+        message(STATUS "No ccache found on the machine.")
+    endif()
 endif()
 
 
