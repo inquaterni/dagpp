@@ -44,6 +44,7 @@ target_sources(dagpp INTERFACE
         include/helpers.h
         include/usings.h
         include/csr.h
+        include/pmr.h
 )
 target_include_directories(dagpp INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

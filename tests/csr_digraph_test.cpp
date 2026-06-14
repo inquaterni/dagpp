@@ -106,8 +106,8 @@ TEST(csr_digraph_test, lvalue_add_node_and_reserve) {
     builder.reserve_edges(1);
     test_node n1{10};
     test_node n2{20};
-    builder.add_node(n1);
-    builder.add_node(n2);
+    builder.emplace_node(n1);
+    builder.emplace_node(n2);
     builder.add_edge(0, 1);
     const auto graph = builder.compile();
     EXPECT_EQ(graph.count(), 2);

@@ -11,11 +11,16 @@
 #include "digraph.h"
 
 namespace dagpp::ext {
+    template<typename TGraph, typename Pred>
+    concept dot_label_predicate =
+        directed_graph<TGraph> &&
+        std::invocable<Pred, typename TGraph::size_type, typename TGraph::node_type> &&
+        printable<std::invoke_result_t<Pred, typename TGraph::size_type, typename TGraph::node_type>>;
+
     class dot_exporter {
     public:
         template<typename TDir = outbound, directed_graph TSelf, typename Pred>
-        requires std::invocable<Pred, std::size_t, typename TSelf::node_type> &&
-             std::convertible_to<std::invoke_result_t<Pred, typename TSelf::size_type, typename TSelf::node_type>, std::string>
+        requires dot_label_predicate<TSelf, Pred>
         constexpr void to_dot(this const TSelf &self, const Pred& label_pred, std::ofstream &out, TDir cmp = TDir {}) {
             out << "digraph G {\n";
             for (typename TSelf::size_type i = 0; i < self.count(); ++i) {

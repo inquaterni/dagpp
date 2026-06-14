@@ -32,6 +32,12 @@ namespace dagpp {
         {*t.in_weights(id)} -> std::convertible_to<std::span<const typename T::weight_type>>;
     };
 
+    template<typename T>
+    concept printable = requires (std::ostream &os, const T &val)
+    {
+        {os << val} -> std::convertible_to<std::ostream &>;
+    };
+
     struct outbound {
         template<directed_graph TGraph>
         constexpr auto operator()(const TGraph &g, nodeid_t node) const {

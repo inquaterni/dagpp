@@ -7,6 +7,7 @@
 
 #include "digraph.h"
 #include "csr.h"
+#include "pmr.h"
 #include "topo_sort.h"
 #include "dijkstra.h"
 
