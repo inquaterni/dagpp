@@ -43,7 +43,7 @@ namespace dagpp::ext {
         requires dot_label_predicate<TSelf, Pred>
         constexpr void to_dot(this const TSelf &self, const Pred& label_pred, std::ofstream &out, TDir cmp = TDir {}) {
             out << "digraph G {\n";
-            for (typename TSelf::size_type i = 0; i < self.count(); ++i) {
+            for (typename TSelf::size_type i = 0; i < self.node_count(); ++i) {
                 out << label_pred(i, self.node(i));
                 const auto edges = cmp(self, i);
                 if (!edges) continue;

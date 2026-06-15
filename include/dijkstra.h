@@ -43,7 +43,7 @@ namespace dagpp {
     template <wdirected_graph TGraph>
     constexpr dijkstra_result<typename TGraph::weight_type> dijkstra(const TGraph& g, nodeid_t source) {
         using weight_type = TGraph::weight_type;
-        const auto n = g.count();
+        const auto n = g.node_count();
         
         constexpr auto inf = std::numeric_limits<weight_type>::max();
         constexpr auto no_prev = std::numeric_limits<nodeid_t>::max();

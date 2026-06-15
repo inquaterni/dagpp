@@ -13,16 +13,16 @@ struct json_exporter {
     template<typename TSelf>
     void export_json(this const TSelf &self, std::ofstream &out) {
         out << "{\n  \"nodes\": [\n";
-        for (std::size_t i = 0; i < self.count(); ++i) {
+        for (std::size_t i = 0; i < self.node_count(); ++i) {
             // Assuming the node has an 'id' field
             out << "    { \"id\": " << i
                       << ", \"value\": " << self.node(i).id << " }";
-            if (i < self.count() - 1) out << ",";
+            if (i < self.node_count() - 1) out << ",";
             out << "\n";
         }
         out << "  ],\n  \"edges\": [\n";
         bool first = true;
-        for (std::size_t i = 0; i < self.count(); ++i) {
+        for (std::size_t i = 0; i < self.node_count(); ++i) {
             auto edges = self.out_edges(i);
             if (!edges) continue;
             for (auto target : *edges) {

@@ -263,7 +263,8 @@ TEST(dot_exporter_mut_test, diamond_graph_inbound) {
 struct MockErrorGraphDot : public dagpp::ext::dot_exporter {
     using node_type = test_node;
     using size_type = std::size_t;
-    std::size_t count() const { return 1; }
+    std::size_t node_count() const { return 1; }
+    std::size_t edge_count() const { return 0; }
     test_node node(dagpp::nodeid_t) const { return {0}; }
     std::expected<std::span<const dagpp::nodeid_t>, std::string> out_edges(dagpp::nodeid_t) const {
         return std::unexpected{"Mock error"};

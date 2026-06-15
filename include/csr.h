@@ -88,7 +88,9 @@ namespace dagpp::csr {
         [[nodiscard]]
         constexpr const node_type& node(nodeid_t id) const;
         [[nodiscard]]
-        constexpr size_type count() const;
+        constexpr size_type node_count() const;
+        [[nodiscard]]
+        constexpr size_type edge_count() const;
         [[nodiscard]]
         constexpr std::expected<std::span<const nodeid_t>, std::string> out_edges(nodeid_t id) const;
         [[nodiscard]]
@@ -152,7 +154,9 @@ namespace dagpp::csr {
         [[nodiscard]]
         constexpr const node_type& node(nodeid_t id) const;
         [[nodiscard]]
-        constexpr size_type count() const;
+        constexpr size_type node_count() const;
+        [[nodiscard]]
+        constexpr size_type edge_count() const;
         [[nodiscard]]
         constexpr std::expected<std::span<const nodeid_t>, std::string> out_edges(nodeid_t id) const;
         [[nodiscard]]
@@ -256,8 +260,12 @@ namespace dagpp::csr {
     }
 
     template<node TNode, typename... TExtension>
-    constexpr digraph<TNode, TExtension...>::size_type digraph<TNode, TExtension...>::count() const {
+    constexpr digraph<TNode, TExtension...>::size_type digraph<TNode, TExtension...>::node_count() const {
         return m_nodes.size();
+    }
+    template<node TNode, typename... TExtension>
+    constexpr digraph<TNode, TExtension...>::size_type digraph<TNode, TExtension...>::edge_count() const {
+        return m_edges.size();
     }
 
     template<node TNode, typename ... TExtension>
@@ -282,7 +290,7 @@ namespace dagpp::csr {
 
     template<node TNode, typename ... TExtension>
     constexpr bool digraph<TNode, TExtension...>::is_acyclic() const {
-        const auto n = count();
+        const auto n = node_count();
         if (n == 0) return true;
 
         auto alloc = get_allocator();
@@ -402,8 +410,12 @@ namespace dagpp::csr {
     }
 
     template<node TNode, number TWeight, typename ... TExtension>
-    constexpr wdigraph<TNode, TWeight, TExtension...>::size_type wdigraph<TNode, TWeight, TExtension...>::count() const {
+    constexpr wdigraph<TNode, TWeight, TExtension...>::size_type wdigraph<TNode, TWeight, TExtension...>::node_count() const {
         return m_nodes.size();
+    }
+    template<node TNode, number TWeight, typename ... TExtension>
+    constexpr wdigraph<TNode, TWeight, TExtension...>::size_type wdigraph<TNode, TWeight, TExtension...>::edge_count() const {
+        return m_edges.size();
     }
 
     template<node TNode, number TWeight, typename ... TExtension>
@@ -452,7 +464,7 @@ namespace dagpp::csr {
 
     template<node TNode, number TWeight, typename ... TExtension>
     constexpr bool wdigraph<TNode, TWeight, TExtension...>::is_acyclic() const {
-        const auto n = count();
+        const auto n = node_count();
         if (n == 0) return true;
 
         auto alloc = get_allocator();
@@ -488,6 +500,6 @@ namespace dagpp::csr {
         "Immutable CSR graph does not satisfy `directed_graph` concept");
     static_assert(wdirected_graph<wdigraph<_static_test_node, int>>,
         "Immutable CSR graph does not satisfy `wdirected_graph` concept");
-}
+} // dagpp::csr
 
 #endif //DAGPP_CSR_H

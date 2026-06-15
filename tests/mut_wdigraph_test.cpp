@@ -5,13 +5,13 @@
 
 TEST(mut_wdigraph_test, empty_graph) {
     const dagpp::wdigraph<test_node, int> graph;
-    EXPECT_EQ(graph.count(), 0);
+    EXPECT_EQ(graph.node_count(), 0);
 }
 
 TEST(mut_wdigraph_test, single_node) {
     dagpp::wdigraph<test_node, int> graph;
     const auto id = graph.add_node({42});
-    EXPECT_EQ(graph.count(), 1);
+    EXPECT_EQ(graph.node_count(), 1);
     EXPECT_EQ(graph.node(id).value, 42);
 }
 
@@ -20,7 +20,7 @@ TEST(mut_wdigraph_test, multiple_nodes) {
     const auto a = graph.add_node({1});
     const auto b = graph.add_node({2});
     const auto c = graph.add_node({3});
-    EXPECT_EQ(graph.count(), 3);
+    EXPECT_EQ(graph.node_count(), 3);
     EXPECT_EQ(graph.node(a).value, 1);
     EXPECT_EQ(graph.node(b).value, 2);
     EXPECT_EQ(graph.node(c).value, 3);
@@ -186,7 +186,7 @@ TEST(mut_wdigraph_test, reserve_nodes_and_rvalue_add_node) {
     graph.reserve_nodes(3);
     const auto id1 = graph.add_node(test_node{10});
     const auto id2 = graph.add_node(test_node{20});
-    EXPECT_EQ(graph.count(), 2);
+    EXPECT_EQ(graph.node_count(), 2);
 
     const dagpp::wdigraph<test_node, int>& cg = graph;
     EXPECT_EQ(cg.node(id1).value, 10);

@@ -40,7 +40,8 @@ namespace dagpp {
         {*t.in_edges(id)} -> std::convertible_to<std::span<const nodeid_t>>;
         {t.is_acyclic()} -> std::same_as<bool>;
         {t.node(id)} -> std::convertible_to<typename T::node_type>;
-        {t.count()} -> std::same_as<typename T::size_type>;
+        {t.node_count()} -> std::same_as<typename T::size_type>;
+        {t.edge_count()} -> std::same_as<typename T::size_type>;
     };
 
     template<typename T>

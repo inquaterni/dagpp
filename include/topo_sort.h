@@ -34,7 +34,7 @@
 namespace dagpp {
     template<directed_graph TGraph>
     constexpr std::expected<std::vector<nodeid_t>, std::string> topo_sort(const TGraph& graph) {
-        const auto n = graph.count();
+        const auto n = graph.node_count();
         if (n == 0) return std::vector<nodeid_t>{};
 
         std::vector<std::size_t> in_degree(n, 0);

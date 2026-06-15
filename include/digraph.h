@@ -49,7 +49,9 @@ namespace dagpp {
         [[nodiscard]]
         constexpr node_type& node(nodeid_t id) { return m_nodes[id]; }
         [[nodiscard]]
-        constexpr size_type count() const { return m_nodes.size(); }
+        constexpr size_type node_count() const { return m_nodes.size(); }
+        [[nodiscard]]
+        constexpr size_type edge_count() const { return m_out_edges.size(); }
 
         [[nodiscard]]
         constexpr std::expected<std::span<const nodeid_t>, std::string> out_edges(nodeid_t id) const;
@@ -82,7 +84,9 @@ namespace dagpp {
         [[nodiscard]]
         constexpr node_type& node(nodeid_t id) { return m_nodes[id]; }
         [[nodiscard]]
-        constexpr size_type count() const { return m_nodes.size(); }
+        constexpr size_type node_count() const { return m_nodes.size(); }
+        [[nodiscard]]
+        constexpr size_type edge_count() const { return m_out_edges.size(); }
 
         [[nodiscard]]
         constexpr std::expected<std::span<const nodeid_t>, std::string> out_edges(nodeid_t id) const;
@@ -149,7 +153,7 @@ namespace dagpp {
 
     template<typename TNode, typename ... TExtension>
     constexpr bool digraph<TNode, TExtension...>::is_acyclic() const {
-        const auto n = count();
+        const auto n = node_count();
         if (n == 0) return true;
 
         std::vector<size_type> in_degree(n);
@@ -238,7 +242,7 @@ namespace dagpp {
 
     template<typename TNode, number TWeight, typename ...TExtension>
     constexpr bool wdigraph<TNode, TWeight, TExtension...>::is_acyclic() const {
-        const auto n = count();
+        const auto n = node_count();
         if (n == 0) return true;
 
         std::vector<size_type> in_degree(n);

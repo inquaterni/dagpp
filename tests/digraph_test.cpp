@@ -5,14 +5,14 @@
 TEST(digraph_test, empty_graph) {
     const dagpp::digraph<test_node> graph;
 
-    EXPECT_EQ(graph.count(), 0);
+    EXPECT_EQ(graph.node_count(), 0);
 }
 
 TEST(digraph_test, single_node) {
     dagpp::digraph<test_node> graph;
     const auto id = graph.add_node({42});
 
-    EXPECT_EQ(graph.count(), 1);
+    EXPECT_EQ(graph.node_count(), 1);
     EXPECT_EQ(graph.node(id).value, 42);
 }
 
@@ -22,7 +22,7 @@ TEST(digraph_test, multiple_nodes) {
     const auto b = graph.add_node({2});
     const auto c = graph.add_node({3});
 
-    EXPECT_EQ(graph.count(), 3);
+    EXPECT_EQ(graph.node_count(), 3);
     EXPECT_EQ(graph.node(a).value, 1);
     EXPECT_EQ(graph.node(b).value, 2);
     EXPECT_EQ(graph.node(c).value, 3);
@@ -99,7 +99,7 @@ TEST(digraph_test, reserve_nodes_and_add_rvalue) {
     graph.reserve_nodes(2);
     const auto id1 = graph.add_node(test_node{10});
     const auto _ = graph.add_node(test_node{20});
-    EXPECT_EQ(graph.count(), 2);
+    EXPECT_EQ(graph.node_count(), 2);
     
     const dagpp::digraph<test_node>& const_graph = graph;
     EXPECT_EQ(const_graph.node(id1).value, 10);

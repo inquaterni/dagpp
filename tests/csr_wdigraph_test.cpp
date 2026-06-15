@@ -6,7 +6,7 @@ TEST(csr_wdigraph_test, empty_graph) {
     dagpp::csr::wdigraph_builder<test_node, int> builder;
     const auto graph = builder.compile();
 
-    EXPECT_EQ(graph.count(), 0);
+    EXPECT_EQ(graph.node_count(), 0);
 }
 
 TEST(csr_wdigraph_test, single_node) {
@@ -14,7 +14,7 @@ TEST(csr_wdigraph_test, single_node) {
     const auto id = builder.add_node({42});
     const auto graph = builder.compile();
 
-    EXPECT_EQ(graph.count(), 1);
+    EXPECT_EQ(graph.node_count(), 1);
     EXPECT_EQ(graph.node(id).value, 42);
 }
 
@@ -25,7 +25,7 @@ TEST(csr_wdigraph_test, multiple_nodes) {
     const auto c = builder.add_node({3});
     const auto graph = builder.compile();
 
-    EXPECT_EQ(graph.count(), 3);
+    EXPECT_EQ(graph.node_count(), 3);
     EXPECT_EQ(graph.node(a).value, 1);
     EXPECT_EQ(graph.node(b).value, 2);
     EXPECT_EQ(graph.node(c).value, 3);
@@ -141,7 +141,7 @@ TEST(csr_wdigraph_test, lvalue_add_node_and_reserve) {
     builder.add_node(n2);
     builder.add_edge(0, 1, 5);
     const auto graph = builder.compile();
-    EXPECT_EQ(graph.count(), 2);
+    EXPECT_EQ(graph.node_count(), 2);
 
     const auto weights = graph.out_weights(0);
     ASSERT_TRUE(weights.has_value());
