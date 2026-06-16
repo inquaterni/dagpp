@@ -4,22 +4,15 @@ project(dagpp)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(DAGPP_INCLUDES
-        include/digraph.h
-        include/dot.h
-        include/topo_sort.h
-        include/dagpp.h
-)
-
-option(DAGPP_ENABLE_LTO "Enable LTO" ON)
-option(DAGPP_BUILD_NATIVE "Enable native build" ON)
-option(DAGPP_ENABLE_AVX10 "Enable AVX10.1 instructions (if not building native)" ON)
-option(DAGPP_ENABLE_AVX2 "Enable AVX2 instructions (if not building native)" ON)
-option(DAGPP_STRIP_DEAD "Enable dead code stripping" ON)
-option(DAGPP_HIDDEN_VISIBILITY "Hide symbols" ON)
-option(DAGPP_ENABLE_NO_EXCEPT "Enable -fno-exception flag." ON)
-option(DAGPP_ENABLE_NO_RTTI "Enable -fno-rtti flag." ON)
-option(DAGPP_ENABLE_FAST_MATH "Enable -ffast-math optimizations. Not recommended" OFF)
+option(DAGPP_ENABLE_LTO         "Enable LTO"                                            ON)
+option(DAGPP_BUILD_NATIVE       "Enable native build"                                   ON)
+option(DAGPP_ENABLE_AVX10       "Enable AVX10.1 instructions (if not building native)"  ON)
+option(DAGPP_ENABLE_AVX2        "Enable AVX2 instructions (if not building native)"     ON)
+option(DAGPP_STRIP_DEAD         "Enable dead code stripping"                            ON)
+option(DAGPP_HIDDEN_VISIBILITY  "Hide symbols"                                          ON)
+option(DAGPP_ENABLE_NO_EXCEPT   "Enable -fno-exception flag."                           ON)
+option(DAGPP_ENABLE_NO_RTTI     "Enable -fno-rtti flag."                                ON)
+option(DAGPP_ENABLE_FAST_MATH   "Enable -ffast-math optimizations. Not recommended"     OFF)
 
 
 find_program(CCACHE_PROGRAM ccache)
@@ -32,8 +25,8 @@ else ()
 endif()
 
 add_library(dagpp INTERFACE
-        include/dijkstra.h
-        include/parallel.h)
+            include/dagpp.h
+)
 target_sources(dagpp INTERFACE
         FILE_SET HEADERS
         BASE_DIRS include

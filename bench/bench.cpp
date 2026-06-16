@@ -1,25 +1,43 @@
-//
-// Google Benchmark suite for dag++
-//
+/*
+* MIT License
+ *
+ * Copyright (c) 2026 Maksym Matskevich
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include <benchmark/benchmark.h>
-#include <malloc.h>   // mallinfo2 (Linux/glibc >= 2.33)
+#include <malloc.h>
 #include <numeric>
 #include <random>
 #include <string>
 #include <format>
 
 #include "dagpp.h"
-#include "dot.h"
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Node type
 // ---------------------------------------------------------------------------
 
-// A realistic node type: two heap-allocated strings simulate real-world
-// payloads (e.g. task names, build-system targets, dependency labels).
 struct node_t {
-    std::string name;   // e.g. "task_0042"
-    std::string label;  // e.g. "build:lib:task_0042"
+    std::string name;
+    std::string label;
 };
 
 static node_t make_node(std::size_t i) {
@@ -30,60 +48,7 @@ static node_t make_node(std::size_t i) {
 }
 
 // ---------------------------------------------------------------------------
-// Memory helpers
-// ---------------------------------------------------------------------------
-
-// Returns current glibc heap usage in bytes (uordblks = in-use allocated bytes).
-static std::size_t heap_used() noexcept {
-#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 33))
-    return mallinfo2().uordblks;
-#else
-    return 0;
-#endif
-}
-
-// Measures the *net* heap bytes allocated by calling fn().
-// The result object is immediately destroyed so its memory is freed;
-// we capture the high-water mark before destruction.
-template<typename Fn>
-static std::size_t heap_delta(Fn&& fn) {
-    const auto before = heap_used();
-    { auto obj = fn(); benchmark::DoNotOptimize(obj); }
-    const auto after_live = heap_used();
-    const auto b2 = heap_used();
-    { volatile auto obj2 = fn(); (void)obj2; }
-    const auto peak = heap_used();
-    (void)before; (void)after_live; (void)b2;
-    const auto b3 = heap_used();
-    auto g = fn();
-    const auto a3 = heap_used();
-    benchmark::DoNotOptimize(g);
-    return a3 >= b3 ? a3 - b3 : 0;
-}
-
-// Simpler version for callables that return void or whose allocation we
-// measure while the enclosing graph (already built) stays alive.
-static std::size_t heap_delta_algo(auto fn) {
-    const auto before = heap_used();
-    { auto r = fn(); benchmark::DoNotOptimize(r); }
-    const auto after = heap_used();
-    // Algorithms free their temporaries; delta may be 0 or negative due to
-    // allocator bookkeeping noise – clamp to 0.
-    return after >= before ? after - before : 0;
-}
-
-static void set_mem_counter(benchmark::State& state,
-                            const char* name,
-                            const std::size_t bytes) {
-    state.counters[name] = benchmark::Counter(
-        static_cast<double>(bytes),
-        benchmark::Counter::kDefaults,
-        benchmark::Counter::OneK::kIs1024
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Graph factories
+// Graph factories — unweighted
 // ---------------------------------------------------------------------------
 
 static dagpp::csr::digraph<node_t> make_chain(const std::size_t n) {
@@ -101,14 +66,13 @@ static dagpp::csr::digraph<node_t> make_binary_tree(const std::size_t n) {
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
     for (std::size_t i = 0; i < n; ++i) {
-        const std::size_t l = 2 * i + 1, r = 2 * i + 2;
-        if (l < n) b.add_edge(i, l);
-        if (r < n) b.add_edge(i, r);
+        if (const std::size_t l = 2 * i + 1; l < n) b.add_edge(i, l);
+        if (const std::size_t r = 2 * i + 2; r < n) b.add_edge(i, r);
     }
     return b.compile();
 }
 
-static dagpp::csr::digraph<node_t> make_dense_dag(std::size_t n) {
+static dagpp::csr::digraph<node_t> make_dense_dag(const std::size_t n) {
     dagpp::csr::digraph_builder<node_t> b;
     b.reserve_nodes(n);
     b.reserve_edges(n * (n - 1) / 2);
@@ -129,232 +93,312 @@ static dagpp::csr::digraph<node_t> make_cyclic(const std::size_t n) {
 }
 
 // ---------------------------------------------------------------------------
-// BM_GraphConstruct  – measures csr::digraph_builder::compile()
-// GraphMem = heap footprint of the compiled graph (nodes + edge lists)
+// Graph factories — weighted
+// ---------------------------------------------------------------------------
+
+static dagpp::csr::wdigraph<node_t, std::size_t> make_chain_weighted(std::size_t n) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n > 0 ? n - 1 : 0);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i + 1 < n; ++i) b.add_edge(i, i + 1, w(rng));
+    return b.compile();
+}
+
+static dagpp::csr::wdigraph<node_t, std::size_t> make_binary_tree_weighted(const std::size_t n) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n > 0 ? n - 1 : 0);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i < n; ++i) {
+        if (const std::size_t l = 2 * i + 1; l < n) b.add_edge(i, l, w(rng));
+        if (const std::size_t r = 2 * i + 2; r < n) b.add_edge(i, r, w(rng));
+    }
+    return b.compile();
+}
+
+static dagpp::csr::wdigraph<node_t, std::size_t> make_dense_dag_weighted(const std::size_t n) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n * (n - 1) / 2);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = i + 1; j < n; ++j)
+            b.add_edge(i, j, w(rng));
+    return b.compile();
+}
+
+// Sparse random DAG: avg_out forward edges per node via reservoir sampling.
+static dagpp::csr::wdigraph<node_t, std::size_t>
+make_sparse_dag_weighted(const std::size_t n, const std::size_t avg_out = 12) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n * avg_out);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i + 1 < n; ++i) {
+        const std::size_t remaining = n - i - 1;
+        const std::size_t out = std::min(avg_out, remaining);
+        std::vector<std::size_t> targets(remaining);
+        std::iota(targets.begin(), targets.end(), i + 1);
+        for (std::size_t k = 0; k < out; ++k) {
+            std::uniform_int_distribution pick{k, remaining - 1};
+            std::swap(targets[k], targets[pick(rng)]);
+            b.add_edge(i, targets[k], w(rng));
+        }
+    }
+    return b.compile();
+}
+
+static dagpp::csr::wdigraph<node_t, std::size_t>
+make_sparse_dag_n_edges(const std::size_t target_edges, const std::size_t avg_out = 12) {
+    const std::size_t n = std::max<std::size_t>(2, target_edges / avg_out);
+    return make_sparse_dag_weighted(n, avg_out);
+}
+
+// ---------------------------------------------------------------------------
+// Construction
 // ---------------------------------------------------------------------------
 
 static void BM_ConstructChain(benchmark::State& state) {
     const auto n = static_cast<std::size_t>(state.range(0));
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_chain(n); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(make_chain(n));
-    }
-    state.SetItemsProcessed(state.iterations() *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_ConstructChain)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_ConstructChain)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_ConstructBinaryTree(benchmark::State& state) {
     const auto n = static_cast<std::size_t>(state.range(0));
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_binary_tree(n); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(make_binary_tree(n));
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_ConstructBinaryTree)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_ConstructBinaryTree)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_ConstructDenseDag(benchmark::State& state) {
     const auto n = static_cast<std::size_t>(state.range(0));
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_dense_dag(n); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(make_dense_dag(n));
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() *
                             static_cast<int64_t>(n * (n - 1) / 2));
 }
-BENCHMARK(BM_ConstructDenseDag)->RangeMultiplier(4)->Range(16, 1024);
+BENCHMARK(BM_ConstructDenseDag)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
 
 // ---------------------------------------------------------------------------
-// BM_OutEdges / BM_InEdges  – no allocation in hot path; report GraphMem only
+// Edge traversal
 // ---------------------------------------------------------------------------
 
 static void BM_OutEdgesChain(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_chain(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_chain(n); }));
     std::size_t sink = 0;
-    for (auto _ : state) {
-        for (dagpp::nodeid_t i = 0; i < graph.count(); ++i) {
-            if (auto e = graph.out_edges(i); e.has_value())
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
+            if (auto e = graph.out_edges(i))
                 for (auto v : *e) { benchmark::DoNotOptimize(v); sink += v; }
-        }
-    }
     benchmark::DoNotOptimize(sink);
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_OutEdgesChain)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_OutEdgesChain)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_InEdgesChain(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_chain(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_chain(n); }));
     std::size_t sink = 0;
-    for (auto _ : state) {
-        for (dagpp::nodeid_t i = 0; i < graph.count(); ++i) {
-            if (auto e = graph.in_edges(i); e.has_value())
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
+            if (auto e = graph.in_edges(i))
                 for (auto v : *e) { benchmark::DoNotOptimize(v); sink += v; }
-        }
-    }
     benchmark::DoNotOptimize(sink);
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_InEdgesChain)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_InEdgesChain)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_OutEdgesDense(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_dense_dag(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_dense_dag(n); }));
     std::size_t sink = 0;
-    for (auto _ : state) {
-        for (dagpp::nodeid_t i = 0; i < graph.count(); ++i) {
-            if (auto e = graph.out_edges(i); e.has_value())
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
+            if (auto e = graph.out_edges(i))
                 for (auto v : *e) { benchmark::DoNotOptimize(v); sink += v; }
-        }
-    }
     benchmark::DoNotOptimize(sink);
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() *
                             static_cast<int64_t>(n * (n - 1) / 2));
 }
-BENCHMARK(BM_OutEdgesDense)->RangeMultiplier(4)->Range(16, 1024);
+BENCHMARK(BM_OutEdgesDense)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
 
 // ---------------------------------------------------------------------------
-// BM_IsAcyclic
-// GraphMem = graph footprint; TopoTempMem = temporary vectors inside is_acyclic()
+// IsAcyclic
 // ---------------------------------------------------------------------------
 
 static void BM_IsAcyclicTrue(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_chain(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_chain(n); }));
-    set_mem_counter(state, "TopoTempMem",
-        heap_delta_algo([&]{ return graph.is_acyclic(); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(graph.is_acyclic());
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_IsAcyclicTrue)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_IsAcyclicTrue)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_IsAcyclicFalse(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_cyclic(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_cyclic(n); }));
-    set_mem_counter(state, "TopoTempMem",
-        heap_delta_algo([&]{ return graph.is_acyclic(); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(graph.is_acyclic());
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_IsAcyclicFalse)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_IsAcyclicFalse)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_IsAcyclicDense(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_dense_dag(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_dense_dag(n); }));
-    set_mem_counter(state, "TopoTempMem",
-        heap_delta_algo([&]{ return graph.is_acyclic(); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(graph.is_acyclic());
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_IsAcyclicDense)->RangeMultiplier(4)->Range(16, 1024);
+BENCHMARK(BM_IsAcyclicDense)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
 
 // ---------------------------------------------------------------------------
-// BM_TopoSort
-// TopoTempMem = in_degree vector + result vector allocated by topo_sort()
+// TopoSort
 // ---------------------------------------------------------------------------
 
 static void BM_TopoSortChain(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_chain(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_chain(n); }));
-    set_mem_counter(state, "TopoTempMem",
-        heap_delta_algo([&]{ return dagpp::topo_sort(graph); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(dagpp::topo_sort(graph));
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_TopoSortChain)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_TopoSortChain)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_TopoSortBinaryTree(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_binary_tree(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_binary_tree(n); }));
-    set_mem_counter(state, "TopoTempMem",
-        heap_delta_algo([&]{ return dagpp::topo_sort(graph); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(dagpp::topo_sort(graph));
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_TopoSortBinaryTree)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_TopoSortBinaryTree)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_TopoSortDense(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_dense_dag(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_dense_dag(n); }));
-    set_mem_counter(state, "TopoTempMem",
-        heap_delta_algo([&]{ return dagpp::topo_sort(graph); }));
-    for (auto _ : state) {
+    for (auto _ : state)
         benchmark::DoNotOptimize(dagpp::topo_sort(graph));
-    }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_TopoSortDense)->RangeMultiplier(4)->Range(16, 1024);
+BENCHMARK(BM_TopoSortDense)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
 
 // ---------------------------------------------------------------------------
-// BM_NodeAccess  – GraphMem only; no per-call allocation
+// Node access
 // ---------------------------------------------------------------------------
 
 static void BM_NodeAccessSequential(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_chain(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_chain(n); }));
     std::size_t sink = 0;
-    for (auto _ : state) {
-        for (dagpp::nodeid_t i = 0; i < graph.count(); ++i)
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
             sink += graph.node(i).name.size();
-    }
     benchmark::DoNotOptimize(sink);
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_NodeAccessSequential)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_NodeAccessSequential)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
 
 static void BM_NodeAccessRandom(benchmark::State& state) {
     const auto n     = static_cast<std::size_t>(state.range(0));
     const auto graph = make_chain(n);
-    set_mem_counter(state, "GraphMem", heap_delta([n]{ return make_chain(n); }));
 
     std::vector<dagpp::nodeid_t> indices(n);
     std::iota(indices.begin(), indices.end(), dagpp::nodeid_t{0});
-    const std::random_device rd;
-    std::mt19937 rng{static_cast<std::mersenne_twister_engine<unsigned long, 32, 624, 397, 31, 2567483615, 11, 4294967295, 7, 2636928640, 15, 4022730752, 18, 1812433253>::result_type>(rd.entropy())};
+    std::mt19937_64 rng{std::random_device{}()};
     std::ranges::shuffle(indices, rng);
 
     std::size_t sink = 0;
-    for (auto _ : state) {
+    for (auto _ : state)
         for (const auto i : indices)
             sink += graph.node(i).name.size();
-    }
     benchmark::DoNotOptimize(sink);
-    state.SetItemsProcessed(state.iterations() *
-                            static_cast<int64_t>(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
 }
-BENCHMARK(BM_NodeAccessRandom)->RangeMultiplier(4)->Range(64, 65536);
+BENCHMARK(BM_NodeAccessRandom)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
+
+// ---------------------------------------------------------------------------
+// Dijkstra — single-source, all destinations
+// ---------------------------------------------------------------------------
+
+static void BM_DijkstraChain(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_chain_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_DijkstraChain)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
+
+static void BM_DijkstraBinaryTree(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_binary_tree_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_DijkstraBinaryTree)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
+
+static void BM_DijkstraDense(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_dense_dag_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_DijkstraDense)->RangeMultiplier(2)->Range(64, 8192)->Complexity();
+
+static void BM_DijkstraSparse(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_sparse_dag_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_DijkstraSparse)->RangeMultiplier(4)->Range(1024, 65536)->Complexity();
+
+static void BM_DijkstraSparse_PointToPoint(benchmark::State& state) {
+    const auto edge_count = static_cast<std::size_t>(state.range(0));
+    const auto graph      = make_sparse_dag_n_edges(edge_count);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(edge_count));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(edge_count));
+}
+BENCHMARK(BM_DijkstraSparse_PointToPoint)->RangeMultiplier(4)->Range(256, 1 << 20)->Complexity();
 
 // ---------------------------------------------------------------------------
 
