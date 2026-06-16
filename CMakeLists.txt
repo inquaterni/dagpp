@@ -32,8 +32,8 @@ else ()
 endif()
 
 add_library(dagpp INTERFACE
-        include/dijkstra.h
-        include/parallel.h)
+            include/dagpp.h
+)
 target_sources(dagpp INTERFACE
         FILE_SET HEADERS
         BASE_DIRS include
