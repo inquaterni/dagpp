@@ -26,6 +26,8 @@ endif()
 
 add_library(dagpp INTERFACE
             include/dagpp.h
+        include/vcsr.h
+        include/detail.h
 )
 target_sources(dagpp INTERFACE
         FILE_SET HEADERS

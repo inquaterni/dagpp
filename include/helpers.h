@@ -27,6 +27,31 @@
 #include <span>
 #include "usings.h"
 
+// ============================================================================
+// Microsoft Guidelines Support Library (GSL) - narrow_cast
+// Copyright (c) 2015 Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+// Source: https://github.com/microsoft/GSL
+// ============================================================================
+#if defined(__clang__)
+    #define GLS_SUPPRESS(x) [[gsl::suppress(#x)]]
+#elif defined(_MSC_VER) && _MSC_VER >= 1950
+    // Visual Studio versions after 2022 (_MSC_VER > 1944) support the justification message.
+    #define GLS_SUPPRESS(x) [[gsl::suppress(#x)]]
+#elif defined(_MSC_VER) && !defined(__INTEL_COMPILER) && !defined(__NVCC__)
+    #define GLS_SUPPRESS(x) [[gsl::suppress(x)]]
+#else
+    #define GLS_SUPPRESS(x)
+#endif // defined(__clang__)
+
+namespace gsl {
+    template <class T, class U>
+    GLS_SUPPRESS(type.1) constexpr T narrow_cast(U&& u) noexcept
+    {
+        return static_cast<T>(std::forward<U>(u));
+    }
+} // gsl
+
 namespace dagpp {
     template<typename T>
     concept number = std::integral<T> || std::floating_point<T>;

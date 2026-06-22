@@ -21,6 +21,8 @@ add_executable(dagpp_tests
         in_edges_acyclic_test.cpp
         json_ext_test.cpp
         basic_usage.cpp
+        vcsr_digraph_test.cpp
+        vcsr_wdigraph_test.cpp
 )
 
 target_link_libraries(dagpp_tests

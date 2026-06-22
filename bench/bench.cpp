@@ -30,6 +30,7 @@
 #include <format>
 
 #include "dagpp.h"
+#include "vcsr.h"
 
 // ---------------------------------------------------------------------------
 // Node type
@@ -161,6 +162,122 @@ static dagpp::csr::wdigraph<node_t, std::size_t>
 make_sparse_dag_n_edges(const std::size_t target_edges, const std::size_t avg_out = 12) {
     const std::size_t n = std::max<std::size_t>(2, target_edges / avg_out);
     return make_sparse_dag_weighted(n, avg_out);
+}
+
+// ===========================================================================
+// VCSR Graph Factories — Unweighted
+// ===========================================================================
+
+
+static dagpp::vcsr::digraph<node_t> make_vcsr_chain(const std::size_t n, const double density = 0.25) {
+    dagpp::vcsr::digraph_builder<node_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n > 0 ? n - 1 : 0);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i + 1 < n; ++i) b.add_edge(i, i + 1);
+    return b.compile(density);
+}
+
+static dagpp::vcsr::digraph<node_t> make_vcsr_binary_tree(const std::size_t n, const double density = 0.25) {
+    dagpp::vcsr::digraph_builder<node_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n > 0 ? n - 1 : 0);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i < n; ++i) {
+        if (const std::size_t l = 2 * i + 1; l < n) b.add_edge(i, l);
+        if (const std::size_t r = 2 * i + 2; r < n) b.add_edge(i, r);
+    }
+    return b.compile(density);
+}
+
+static dagpp::vcsr::digraph<node_t> make_vcsr_dense_dag(const std::size_t n, const double density = 0.25) {
+    dagpp::vcsr::digraph_builder<node_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n * (n - 1) / 2);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = i + 1; j < n; ++j)
+            b.add_edge(i, j);
+    return b.compile(density);
+}
+
+static dagpp::vcsr::digraph<node_t> make_vcsr_cyclic(const std::size_t n, const double density = 0.25) {
+    dagpp::vcsr::digraph_builder<node_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i < n; ++i) b.add_edge(i, (i + 1) % n);
+    return b.compile(density);
+}
+
+// ===========================================================================
+// VCSR Graph Factories — Weighted
+// ===========================================================================
+
+static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_chain_weighted(const std::size_t n, const double density = 0.25) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n > 0 ? n - 1 : 0);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i + 1 < n; ++i) b.add_edge(i, i + 1, w(rng));
+    return b.compile(density);
+}
+
+static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_binary_tree_weighted(const std::size_t n, const double density = 0.25) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n > 0 ? n - 1 : 0);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i < n; ++i) {
+        if (const std::size_t l = 2 * i + 1; l < n) b.add_edge(i, l, w(rng));
+        if (const std::size_t r = 2 * i + 2; r < n) b.add_edge(i, r, w(rng));
+    }
+    return b.compile(density);
+}
+
+static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_dense_dag_weighted(const std::size_t n, const double density = 0.25) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n * (n - 1) / 2);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = i + 1; j < n; ++j)
+            b.add_edge(i, j, w(rng));
+    return b.compile(density);
+}
+
+static dagpp::vcsr::wdigraph<node_t, std::size_t>
+make_vcsr_sparse_dag_weighted(const std::size_t n, const std::size_t avg_out = 12, const double density = 0.25) {
+    std::mt19937_64 rng{69420};
+    std::uniform_int_distribution<std::size_t> w{1, 1000};
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    b.reserve_nodes(n);
+    b.reserve_edges(n * avg_out);
+    for (std::size_t i = 0; i < n; ++i) b.add_node(make_node(i));
+    for (std::size_t i = 0; i + 1 < n; ++i) {
+        const std::size_t remaining = n - i - 1;
+        const std::size_t out = std::min(avg_out, remaining);
+        std::vector<std::size_t> targets(remaining);
+        std::iota(targets.begin(), targets.end(), i + 1);
+        for (std::size_t k = 0; k < out; ++k) {
+            std::uniform_int_distribution pick{k, remaining - 1};
+            std::swap(targets[k], targets[pick(rng)]);
+            b.add_edge(i, targets[k], w(rng));
+        }
+    }
+    return b.compile(density);
+}
+
+static dagpp::vcsr::wdigraph<node_t, std::size_t>
+make_vcsr_sparse_dag_n_edges(const std::size_t target_edges, const std::size_t avg_out = 12) {
+    const std::size_t n = std::max<std::size_t>(2, target_edges / avg_out);
+    return make_vcsr_sparse_dag_weighted(n, avg_out);
 }
 
 // ---------------------------------------------------------------------------
@@ -400,6 +517,257 @@ static void BM_DijkstraSparse_PointToPoint(benchmark::State& state) {
 }
 BENCHMARK(BM_DijkstraSparse_PointToPoint)->RangeMultiplier(4)->Range(256, 1 << 20)->Complexity();
 
+
+// ===========================================================================
+// VCSR Benchmarks
+// ===========================================================================
+
+static void BM_VcsrConstructChain(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    for (auto _ : state)
+        benchmark::DoNotOptimize(make_vcsr_chain(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrConstructChain)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
+
+static void BM_VcsrConstructBinaryTree(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    for (auto _ : state)
+        benchmark::DoNotOptimize(make_vcsr_binary_tree(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrConstructBinaryTree)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
+
+static void BM_VcsrConstructDense(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    for (auto _ : state)
+        benchmark::DoNotOptimize(make_vcsr_dense_dag(n));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() *
+                            static_cast<int64_t>(n * (n - 1) / 2));
+}
+BENCHMARK(BM_VcsrConstructDense)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
+
+static void BM_VcsrOutEdgesChain(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_chain(n, density);
+    std::size_t sink = 0;
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
+            if (auto e = graph.out_edges(i))
+                for (auto v : *e) { benchmark::DoNotOptimize(v); sink += v; }
+    benchmark::DoNotOptimize(sink);
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrOutEdgesChain)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrInEdgesChain(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_chain(n, density);
+    std::size_t sink = 0;
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
+            if (auto e = graph.in_edges(i))
+                for (auto v : *e) { benchmark::DoNotOptimize(v); sink += v; }
+    benchmark::DoNotOptimize(sink);
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrInEdgesChain)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrOutEdgesDense(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_dense_dag(n, density);
+    std::size_t sink = 0;
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
+            if (auto e = graph.out_edges(i))
+                for (auto v : *e) { benchmark::DoNotOptimize(v); sink += v; }
+    benchmark::DoNotOptimize(sink);
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() *
+                            static_cast<int64_t>(n * (n - 1) / 2));
+}
+BENCHMARK(BM_VcsrOutEdgesDense)->ArgsProduct({benchmark::CreateRange(64, 8192, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrIsAcyclicTrue(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_chain(n, density);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(graph.is_acyclic());
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrIsAcyclicTrue)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrIsAcyclicFalse(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_cyclic(n, density);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(graph.is_acyclic());
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrIsAcyclicFalse)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrIsAcyclicDense(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_dense_dag(n, density);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(graph.is_acyclic());
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrIsAcyclicDense)->ArgsProduct({benchmark::CreateRange(64, 8192, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrTopoSortChain(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_chain(n, density);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::topo_sort(graph));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrTopoSortChain)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrTopoSortBinaryTree(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_binary_tree(n, density);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::topo_sort(graph));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrTopoSortBinaryTree)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrTopoSortDense(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_dense_dag(n, density);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::topo_sort(graph));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrTopoSortDense)->ArgsProduct({benchmark::CreateRange(64, 8192, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrNodeAccessSequential(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_chain(n, density);
+    std::size_t sink = 0;
+    for (auto _ : state)
+        for (dagpp::nodeid_t i = 0; i < graph.node_count(); ++i)
+            sink += graph.node(i).name.size();
+    benchmark::DoNotOptimize(sink);
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrNodeAccessSequential)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrNodeAccessRandom(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+    const auto graph = make_vcsr_chain(n, density);
+
+    std::vector<dagpp::nodeid_t> indices(n);
+    std::iota(indices.begin(), indices.end(), dagpp::nodeid_t{0});
+    std::mt19937_64 rng{std::random_device{}()};
+    std::ranges::shuffle(indices, rng);
+
+    std::size_t sink = 0;
+    for (auto _ : state)
+        for (const auto i : indices)
+            sink += graph.node(i).name.size();
+    benchmark::DoNotOptimize(sink);
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrNodeAccessRandom)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+static void BM_VcsrDynamicAddNode(benchmark::State& state) {
+    const auto n = static_cast<std::size_t>(state.range(0));
+    const double density = state.range(1) / 100.0;
+
+    for (auto _ : state) {
+        state.PauseTiming();
+        // Start with a small compiled graph
+        auto graph = make_vcsr_chain(16, density);
+        state.ResumeTiming();
+
+        for (std::size_t i = 0; i < n; ++i) {
+            benchmark::DoNotOptimize(graph.add_node(make_node(i)));
+        }
+    }
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrDynamicAddNode)->ArgsProduct({benchmark::CreateRange(64, 65536, 4), {25, 50, 75}})->Complexity();
+
+// ---------------------------------------------------------------------------
+// Dijkstra — single-source, all destinations
+// ---------------------------------------------------------------------------
+
+static void BM_VcsrDijkstraChain(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_vcsr_chain_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrDijkstraChain)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
+
+static void BM_VcsrDijkstraBinaryTree(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_binary_tree_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrDijkstraBinaryTree)->RangeMultiplier(4)->Range(64, 65536)->Complexity();
+
+static void BM_VcsrDijkstraDense(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_vcsr_dense_dag_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrDijkstraDense)->RangeMultiplier(2)->Range(64, 8192)->Complexity();
+
+static void BM_VcsrDijkstraSparse(benchmark::State& state) {
+    const auto n     = static_cast<std::size_t>(state.range(0));
+    const auto graph = make_vcsr_sparse_dag_weighted(n);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(n));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n));
+}
+BENCHMARK(BM_VcsrDijkstraSparse)->RangeMultiplier(4)->Range(1024, 65536)->Complexity();
+
+static void BM_VcsrDijkstraSparse_PointToPoint(benchmark::State& state) {
+    const auto edge_count = static_cast<std::size_t>(state.range(0));
+    const auto graph      = make_vcsr_sparse_dag_n_edges(edge_count);
+    for (auto _ : state)
+        benchmark::DoNotOptimize(dagpp::dijkstra(graph, 0));
+    state.SetComplexityN(static_cast<int64_t>(edge_count));
+    state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(edge_count));
+}
+BENCHMARK(BM_VcsrDijkstraSparse_PointToPoint)->RangeMultiplier(4)->Range(256, 1 << 20)->Complexity();
 // ---------------------------------------------------------------------------
 
 BENCHMARK_MAIN();

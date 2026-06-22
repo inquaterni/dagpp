@@ -111,11 +111,11 @@ TEST(digraph_test, out_of_bounds) {
     
     auto out = graph.out_edges(1);
     EXPECT_FALSE(out.has_value());
-    EXPECT_EQ(out.error(), "Index is out of range.");
+    EXPECT_EQ(out.error(), "Index is out of range or node is invalid.");
     
     auto in = graph.in_edges(1);
     EXPECT_FALSE(in.has_value());
-    EXPECT_EQ(in.error(), "Index is out of range.");
+    EXPECT_EQ(in.error(), "Index is out of range or node is invalid.");
 }
 
 TEST(digraph_test, in_edges) {

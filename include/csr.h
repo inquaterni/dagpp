@@ -24,54 +24,41 @@
 
 #ifndef DAGPP_CSR_H
 #define DAGPP_CSR_H
-#include <concepts>
-#include <memory_resource>
-#include <vector>
+#include "detail.h"
 #include <queue>
 #include <expected>
-#include "usings.h"
-#include "helpers.h"
 
 namespace dagpp::csr {
-    template<typename T>
-    concept node = std::semiregular<T>;
 
-    template<node TNode>
+    template<detail::node TNode>
     class digraph_builder;
-    template<node TNode, typename ...TExtension>
+    template<detail::node TNode, typename ...TExtension>
     class digraph;
-    template<node TNode, number TWeight>
+    template<detail::node TNode, number TWeight>
     class wdigraph_builder;
-    template<node TNode, number TWeight, typename ...TExtension>
+    template<detail::node TNode, number TWeight, typename ...TExtension>
     class wdigraph;
 
-    template<node TNode>
-    class digraph_builder {
+    template<detail::node TNode>
+    class digraph_builder : public detail::base_builder<TNode>{
     public:
         using allocator_type = std::pmr::polymorphic_allocator<TNode>;
 
-        constexpr explicit digraph_builder(allocator_type alloc = {})
-            : m_nodes(alloc), m_edges(alloc) {}
-
-        constexpr nodeid_t add_node(const TNode &node);
-        constexpr nodeid_t add_node(TNode &&node);
-
-        template<class ... Args>
-        constexpr nodeid_t emplace_node(Args && ... args);
+        constexpr explicit digraph_builder(allocator_type alloc = {}) noexcept
+        : detail::base_builder<TNode>(alloc), m_edges(alloc) {}
 
         constexpr void add_edge(nodeid_t from, nodeid_t to);
-        constexpr void reserve_nodes(std::size_t n);
-        constexpr void reserve_edges(std::size_t n);
         template<typename ...TExtension>
         [[nodiscard]]
         constexpr digraph<TNode, TExtension...> compile();
+
+        constexpr void reserve_edges(std::size_t n);
     private:
         struct edge_t { nodeid_t from, to; };
-        std::pmr::vector<TNode> m_nodes;
         std::pmr::vector<edge_t> m_edges;
     };
 
-    template<node TNode, typename ...TExtension>
+    template<detail::node TNode, typename ...TExtension>
     class digraph: public TExtension... {
     public:
         using node_type = TNode;
@@ -106,23 +93,18 @@ namespace dagpp::csr {
         std::pmr::vector<nodeid_t> m_rev_edges;
     };
 
-    template<node TNode, number TWeight>
-    class wdigraph_builder {
+    template<detail::node TNode, number TWeight>
+    class wdigraph_builder: public detail::base_builder<TNode> {
     public:
         using allocator_type = std::pmr::polymorphic_allocator<TNode>;
 
         constexpr explicit wdigraph_builder(allocator_type alloc = {})
-            : m_nodes(alloc), m_edges(alloc) {}
+            : detail::base_builder<TNode>(alloc), m_edges(alloc) {}
 
-        constexpr nodeid_t add_node(const TNode &node);
-        constexpr nodeid_t add_node(TNode &&node);
         constexpr void add_edge(nodeid_t from, nodeid_t to, TWeight weight = 1);
 
-        template<class ... Args>
-        constexpr nodeid_t emplace_node(Args && ... args);
-
-        constexpr void reserve_nodes(std::size_t n);
         constexpr void reserve_edges(std::size_t n);
+
         template<typename ...TExtension>
         [[nodiscard]]
         constexpr wdigraph<TNode, TWeight, TExtension...> compile();
@@ -132,11 +114,10 @@ namespace dagpp::csr {
             nodeid_t to;
             TWeight weight;
         };
-        std::pmr::vector<TNode> m_nodes;
         std::pmr::vector<edge_t> m_edges;
     };
 
-    template<node TNode, number TWeight, typename ...TExtension>
+    template<detail::node TNode, number TWeight, typename ...TExtension>
     class wdigraph: public TExtension... {
     public:
         using node_type = TNode;
@@ -178,15 +159,15 @@ namespace dagpp::csr {
         std::pmr::vector<weight_type> m_rev_weights;
     };
 
-    template<node TNode>
+    template<detail::node TNode>
     template<typename ...TExtension>
     constexpr digraph<TNode, TExtension...> digraph_builder<TNode>::compile() {
         using size_type = digraph<TNode, TExtension...>::size_type;
-        digraph<TNode, TExtension...> result {m_nodes.get_allocator()};
-        const auto V = m_nodes.size();
+        digraph<TNode, TExtension...> result {this->m_nodes.get_allocator()};
+        const auto V = this->m_nodes.size();
         const auto E = m_edges.size();
 
-        result.m_nodes = std::move(m_nodes);
+        result.m_nodes = std::move(this->m_nodes);
 
         result.m_offsets.assign(V + 1, 0);
         result.m_edges.resize(E);
@@ -218,57 +199,32 @@ namespace dagpp::csr {
         m_edges.clear();
         return result;
     }
-
-    template<node TNode>
-    constexpr nodeid_t digraph_builder<TNode>::add_node(const TNode &node) {
-        m_nodes.push_back(node);
-        return m_nodes.size() - 1;
-    }
-
-    template<node TNode>
-    constexpr nodeid_t digraph_builder<TNode>::add_node(TNode &&node) {
-        m_nodes.push_back(std::forward<TNode>(node));
-        return m_nodes.size() - 1;
-    }
-
-    template<node TNode>
-    template<typename... Args>
-    constexpr nodeid_t digraph_builder<TNode>::emplace_node(Args&& ...args) {
-        m_nodes.emplace_back(std::forward<Args>(args)...);
-        return m_nodes.size() - 1;
-    }
-
-    template<node TNode>
-    constexpr void digraph_builder<TNode>::add_edge(nodeid_t from, nodeid_t to) {
-        m_edges.emplace_back(from, to);
-    }
-
-    template<node TNode>
-    constexpr void digraph_builder<TNode>::reserve_nodes(std::size_t n) {
-        m_nodes.reserve(n);
-    }
-
-    template<node TNode>
+    template<detail::node TNode>
     constexpr void digraph_builder<TNode>::reserve_edges(std::size_t n) {
         m_edges.reserve(n);
     }
 
+    template<detail::node TNode>
+    constexpr void digraph_builder<TNode>::add_edge(nodeid_t from, nodeid_t to) {
+        m_edges.emplace_back(from, to);
+    }
 
-    template<node TNode, typename... TExtension>
+
+    template<detail::node TNode, typename... TExtension>
     constexpr const TNode &digraph<TNode, TExtension...>::node(nodeid_t id) const {
-        return m_nodes[id];
+        return this->m_nodes[id];
     }
 
-    template<node TNode, typename... TExtension>
+    template<detail::node TNode, typename... TExtension>
     constexpr digraph<TNode, TExtension...>::size_type digraph<TNode, TExtension...>::node_count() const {
-        return m_nodes.size();
+        return this->m_nodes.size();
     }
-    template<node TNode, typename... TExtension>
+    template<detail::node TNode, typename... TExtension>
     constexpr digraph<TNode, TExtension...>::size_type digraph<TNode, TExtension...>::edge_count() const {
         return m_edges.size();
     }
 
-    template<node TNode, typename ... TExtension>
+    template<detail::node TNode, typename ... TExtension>
     constexpr std::expected<std::span<const nodeid_t>, std::string> digraph<TNode, TExtension...>::out_edges(const nodeid_t id) const {
         if (m_offsets.size() - 1 <= id) {
             return std::unexpected{"Index is out of range."};
@@ -278,7 +234,7 @@ namespace dagpp::csr {
         return std::span {m_edges.begin() + start, end - start};
     }
 
-    template<node TNode, typename ... TExtension>
+    template<detail::node TNode, typename ... TExtension>
     constexpr std::expected<std::span<const nodeid_t>, std::string> digraph<TNode, TExtension...>::in_edges(const nodeid_t id) const {
         if (m_rev_offsets.size() - 1 <= id) {
             return std::unexpected{"Index is out of range."};
@@ -288,7 +244,7 @@ namespace dagpp::csr {
         return std::span {m_rev_edges.begin() + start, end - start};
     }
 
-    template<node TNode, typename ... TExtension>
+    template<detail::node TNode, typename ... TExtension>
     constexpr bool digraph<TNode, TExtension...>::is_acyclic() const {
         const auto n = node_count();
         if (n == 0) return true;
@@ -319,50 +275,26 @@ namespace dagpp::csr {
         return queue.size() == n;
     }
 
-    template<node TNode, number TWeight>
-    constexpr nodeid_t wdigraph_builder<TNode, TWeight>::add_node(const TNode &node) {
-        m_nodes.push_back(node);
-        return m_nodes.size() - 1;
-    }
 
-    template<node TNode, number TWeight>
-    constexpr nodeid_t wdigraph_builder<TNode, TWeight>::add_node(TNode &&node) {
-        m_nodes.push_back(std::forward<TNode>(node));
-        return m_nodes.size() - 1;
-    }
-
-    template<node TNode, number TWeight>
+    template<detail::node TNode, number TWeight>
     constexpr void wdigraph_builder<TNode, TWeight>::add_edge(nodeid_t from, nodeid_t to, TWeight weight) {
         m_edges.emplace_back(from, to, weight);
     }
-
-    template<node TNode, number TWeight>
-    template<typename... Args>
-    constexpr nodeid_t wdigraph_builder<TNode, TWeight>::emplace_node(Args&& ...args) {
-        m_nodes.emplace_back(std::forward<Args>(args)...);
-        return m_nodes.size() - 1;
-    }
-
-    template<node TNode, number TWeight>
-    constexpr void wdigraph_builder<TNode, TWeight>::reserve_nodes(std::size_t n) {
-        m_nodes.reserve(n);
-    }
-
-    template<node TNode, number TWeight>
+    template<detail::node TNode, number TWeight>
     constexpr void wdigraph_builder<TNode, TWeight>::reserve_edges(std::size_t n) {
         m_edges.reserve(n);
     }
 
-    template<node TNode, number TWeight>
+    template<detail::node TNode, number TWeight>
     template<typename ... TExtension>
     constexpr wdigraph<TNode, TWeight, TExtension...> wdigraph_builder<TNode, TWeight>::compile() {
         using size_type = wdigraph<TNode, TWeight, TExtension...>::size_type;
-        wdigraph<TNode, TWeight, TExtension...> result {m_nodes.get_allocator()};
+        wdigraph<TNode, TWeight, TExtension...> result {this->m_nodes.get_allocator()};
 
-        const auto V = m_nodes.size();
+        const auto V = this->m_nodes.size();
         const auto E = m_edges.size();
 
-        result.m_nodes = std::move(m_nodes);
+        result.m_nodes = std::move(this->m_nodes);
 
         result.m_offsets.assign(V + 1, 0);
         result.m_edges.resize(E);
@@ -404,21 +336,21 @@ namespace dagpp::csr {
         return result;
     }
 
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr const wdigraph<TNode, TWeight, TExtension...>::node_type &wdigraph<TNode, TWeight, TExtension...>::node(nodeid_t id) const {
-        return m_nodes[id];
+        return this->m_nodes[id];
     }
 
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr wdigraph<TNode, TWeight, TExtension...>::size_type wdigraph<TNode, TWeight, TExtension...>::node_count() const {
-        return m_nodes.size();
+        return this->m_nodes.size();
     }
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr wdigraph<TNode, TWeight, TExtension...>::size_type wdigraph<TNode, TWeight, TExtension...>::edge_count() const {
         return m_edges.size();
     }
 
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr std::expected<std::span<const nodeid_t>, std::string> wdigraph<TNode, TWeight, TExtension...>::out_edges(
         const nodeid_t id) const {
         if (m_offsets.size() - 1 <= id) {
@@ -429,7 +361,7 @@ namespace dagpp::csr {
         return std::span {m_edges.begin() + start, end - start};
     }
 
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr std::expected<std::span<const nodeid_t>, std::string> wdigraph<TNode, TWeight, TExtension...>::in_edges(
         const nodeid_t id) const {
         if (m_rev_offsets.size() - 1 <= id) {
@@ -440,7 +372,7 @@ namespace dagpp::csr {
         return std::span {m_rev_edges.begin() + start, end - start};
     }
 
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr std::expected<std::span<const typename wdigraph<TNode, TWeight, TExtension...>::weight_type>, std::string>
     wdigraph<TNode, TWeight, TExtension...>::out_weights(const nodeid_t id) const {
         if (m_offsets.size() - 1 <= id) {
@@ -451,7 +383,7 @@ namespace dagpp::csr {
         return std::span {m_weights.begin() + start, static_cast<std::size_t>(end - start)};
     }
 
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr std::expected<std::span<const typename wdigraph<TNode, TWeight, TExtension...>::weight_type>, std::string>
     wdigraph<TNode, TWeight, TExtension...>::in_weights(const nodeid_t id) const {
         if (m_rev_offsets.size() - 1 <= id) {
@@ -462,7 +394,7 @@ namespace dagpp::csr {
         return std::span {m_rev_weights.begin() + start, static_cast<std::size_t>(end - start)};
     }
 
-    template<node TNode, number TWeight, typename ... TExtension>
+    template<detail::node TNode, number TWeight, typename ... TExtension>
     constexpr bool wdigraph<TNode, TWeight, TExtension...>::is_acyclic() const {
         const auto n = node_count();
         if (n == 0) return true;

@@ -141,19 +141,19 @@ TEST(mut_wdigraph_test, out_of_bounds) {
 
     auto out = graph.out_edges(1);
     EXPECT_FALSE(out.has_value());
-    EXPECT_EQ(out.error(), "Index is out of range.");
+    EXPECT_EQ(out.error(), "Index is out of range or node is invalid.");
 
     auto in = graph.in_edges(1);
     EXPECT_FALSE(in.has_value());
-    EXPECT_EQ(in.error(), "Index is out of range.");
+    EXPECT_EQ(in.error(), "Index is out of range or node is invalid.");
 
     auto out_w = graph.out_weights(1);
     EXPECT_FALSE(out_w.has_value());
-    EXPECT_EQ(out_w.error(), "Index is out of range.");
+    EXPECT_EQ(out_w.error(), "Index is out of range or node is invalid.");
 
     auto in_w = graph.in_weights(1);
     EXPECT_FALSE(in_w.has_value());
-    EXPECT_EQ(in_w.error(), "Index is out of range.");
+    EXPECT_EQ(in_w.error(), "Index is out of range or node is invalid.");
 }
 
 TEST(mut_wdigraph_test, is_acyclic) {
