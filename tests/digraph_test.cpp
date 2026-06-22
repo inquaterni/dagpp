@@ -142,3 +142,29 @@ TEST(digraph_test, in_edges) {
     EXPECT_EQ((*c_in)[0], a);
     EXPECT_EQ((*c_in)[1], b);
 }
+
+TEST(digraph_test, remove_node_and_reuse_id) {
+    dagpp::digraph<test_node> graph;
+    const auto id0 = graph.add_node({0});
+    const auto id1 = graph.add_node({1});
+    const auto id2 = graph.add_node({2});
+
+    EXPECT_EQ(graph.node_count(), 3);
+    
+    // Remove the middle node
+    graph.remove_node(id1);
+    
+    // Node count should drop
+    EXPECT_EQ(graph.node_count(), 2);
+    
+    // The next added node should reuse id1
+    const auto id3 = graph.add_node({3});
+    EXPECT_EQ(id3, id1);
+    EXPECT_EQ(graph.node(id3).value, 3);
+    EXPECT_EQ(graph.node_count(), 3);
+    
+    // The previously removed node shouldn't interfere with future additions
+    const auto id4 = graph.add_node({4});
+    EXPECT_EQ(id4, 3); // Since 0, 1, 2 were taken, the next fresh ID is 3
+    EXPECT_EQ(graph.node(id4).value, 4);
+}

@@ -367,6 +367,84 @@ TEST(vcsr_digraph_test, stress_test_dynamic_additions) {
     }
 }
 
+TEST(vcsr_digraph_test, reserve_nodes_and_edges) {
+    dagpp::vcsr::digraph_builder<test_node> builder;
+    // Test reserve_nodes and reserve_edges on the builder
+    builder.reserve_nodes(500);
+    builder.reserve_edges(1000);
+    
+    auto graph = builder.compile(density);
+    
+    // Add nodes to ensure nothing was broken by reservation
+    auto id1 = graph.emplace_node(10);
+    auto id2 = graph.emplace_node(20);
+    graph.add_edge(id1, id2);
+    
+    EXPECT_EQ(graph.node_count(), 2);
+    EXPECT_EQ(graph.edge_count(), 1);
+}
+
+TEST(vcsr_digraph_test, insert_forces_left_shift) {
+    dagpp::vcsr::digraph_builder<test_node> builder;
+    auto graph = builder.compile(density);
+    
+    // We want to force a left shift in the PMA insert() method.
+    // Left shifts occur when the right side of an insertion point is full
+    // but there is free space to the left.
+    // The easiest way to force this is to add several nodes, 
+    // fill the edges of the last node in the segment, and then add an edge.
+    
+    std::vector<std::size_t> ids;
+    for (int i = 0; i < 10; ++i) {
+        ids.push_back(graph.emplace_node(i));
+    }
+    
+    // Add enough edges to node 8 to push node 9 to the right edge of the segment.
+    // Then add an edge to node 9, which will have no right_free_slot and will be forced to left-shift node 8.
+    // Note: The specific internal layout depends on segment size, but adding a lot of edges
+    // localized to the end of the node list will inevitably trigger left shifts or rebalances.
+    
+    for (int i = 0; i < 5; ++i) {
+        graph.add_edge(ids[8], ids[i]);
+    }
+    
+    // Now add an edge to 9. Since it's at the end of the node array, it might be right at the boundary.
+    // If we add edges to 9, it expands.
+    for (int i = 0; i < 5; ++i) {
+        graph.add_edge(ids[9], ids[i]);
+    }
+    
+    // Keep thrashing the localized area to force left/right shifts and rebalances
+    for (int i = 0; i < 15; ++i) {
+        graph.add_edge(ids[7], ids[i % 5]);
+    }
+    
+    // Verify edge count
+    EXPECT_EQ(graph.edge_count(), 25);
+}
+
+TEST(vcsr_digraph_test, rebalance_wrapper_and_weighted) {
+    dagpp::vcsr::digraph_builder<test_node> builder;
+    auto graph = builder.compile(0.9); // High density to easily trigger rebalance
+    
+    std::vector<std::size_t> ids;
+    for (int i = 0; i < 50; ++i) {
+        ids.push_back(graph.emplace_node(i));
+    }
+    
+    // Adding many edges to a single node creates a localized density spike.
+    // This will cause its segment to exceed `up_height` density, triggering
+    // `rebalance_wrapper` and `rebalance_weighted` (and update_segment_edge_total).
+    for (int i = 0; i < 40; ++i) {
+        graph.add_edge(ids[25], ids[i]);
+    }
+    
+    // Verify integrity
+    auto out_25 = graph.out_edges(ids[25]);
+    ASSERT_TRUE(out_25.has_value());
+    EXPECT_EQ(out_25->size(), 40);
+}
+
 TEST(vcsr_digraph_test, node_id_consistency_across_expansion) {
     dagpp::vcsr::digraph_builder<test_node> builder;
     auto graph = builder.compile(density);
