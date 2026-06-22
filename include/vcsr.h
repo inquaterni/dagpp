@@ -178,7 +178,7 @@ namespace dagpp::vcsr {
         }
 
         [[nodiscard]]
-        constexpr std::pmr::vector<size_type> calculate_positions(const size_type start_vertex, const size_type end_vertex,
+        std::pmr::vector<size_type> calculate_positions(const size_type start_vertex, const size_type end_vertex,
                                                         const size_type gaps, size_type total_degree) const {
             const size_type size = end_vertex - start_vertex;
             std::pmr::vector<size_type> new_index(size, m_vertices.get_allocator());
@@ -581,7 +581,7 @@ namespace dagpp::vcsr {
         }
 
         [[nodiscard]]
-        constexpr std::pmr::vector<size_type> calculate_positions(const size_type start_vertex, const size_type end_vertex,
+        std::pmr::vector<size_type> calculate_positions(const size_type start_vertex, const size_type end_vertex,
                                                         const size_type gaps, size_type total_degree) const {
             const size_type size = end_vertex - start_vertex;
             std::pmr::vector<size_type> new_index(size, m_vertices.get_allocator());
@@ -904,7 +904,7 @@ namespace dagpp::vcsr {
 
         template<class... TExtension>
         [[nodiscard]]
-        constexpr digraph<TNode, TExtension...> compile(double density = 0.25) {
+        digraph<TNode, TExtension...> compile(double density = 0.25) {
             digraph<TNode, TExtension...> graph(m_nodes.get_allocator());
             graph.m_payloads = std::move(m_nodes);
 
@@ -1075,7 +1075,7 @@ namespace dagpp::vcsr {
 
         template<class... TExtension>
         [[nodiscard]]
-        constexpr wdigraph<TNode, TWeight, TExtension...> compile(double density = 0.25) {
+        wdigraph<TNode, TWeight, TExtension...> compile(double density = 0.25) {
             wdigraph<TNode, TWeight, TExtension...> graph(m_nodes.get_allocator());
             graph.m_payloads = std::move(m_nodes);
 
