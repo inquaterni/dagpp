@@ -11,7 +11,6 @@ A simple and fast C++23 directed graph library.
 ## Table of Contents
 
 - [Features](#features)
-- [Architecture](#architecture)
 - [Build instructions](#build-instructions)
 - [Quick start](#quick-start)
   - [Basic usage](#basic-usage)
@@ -28,6 +27,9 @@ A simple and fast C++23 directed graph library.
   - [csr::digraph_builder\<TNode\>](#csrdigraph_buildertnode)
   - [csr::digraph\<TNode, TExtension...\>](#csrdigraphtnode-textension)
   - [csr::wdigraph\<TNode, TWeight, TExtension...\>](#csrwdigraphtnode-tweight-textension)
+  - [vcsr::digraph_builder\<TNode\>](#vcsrdigraph_buildertnode)
+  - [vcsr::digraph\<TNode, TDensityPolicy, TExtension...\>](#vcsrdigraphtnode-tdensitypolicy-textension)
+  - [vcsr::wdigraph\<TNode, TWeight, TDensityPolicy, TExtension...\>](#vcsrwdigraphtnode-tweight-tdensitypolicy-textension)
   - [topo_sort](#topo_sort)
   - [dijkstra](#dijkstra)
   - [dagpp::ext::dot_exporter](#dagppextdot_exporter)
@@ -44,48 +46,12 @@ A simple and fast C++23 directed graph library.
 - **Immutable CSR option**: Highly compact `dagpp::csr::digraph` built via `dagpp::csr::digraph_builder`
 - **Weighted CSR option**: `dagpp::csr::wdigraph` built via `dagpp::csr::wdigraph_builder` for algorithms like Dijkstra
 - Both representations guarantee `out_edges()` / `in_edges()` return `std::span` views with zero extra allocation
-- Compile-time extensions via C++23 "Deducing This" (no vtables)
+- Compile-time extensions via C++23 "Deducing This"
 - Topological sort (Kahn's), `is_acyclic()`, and **Dijkstra's Pathfinding** included
 - `std::expected` for errors; `-fno-exceptions` / `-fno-rtti` compatible
 - Header-only
 
-## Architecture
-
-```
-digraph<TNode, Ext...>          (mutable, dynamic)
-        ├── .add_node(TNode)     → nodeid_t
-        ├── .add_edge(from, to)
-        ├── <Ext methods ...>    (zero-cost mixins)
-
-wdigraph<TNode, TWeight, Ext...> (mutable, dynamic, weighted)
-        ├── .add_node(TNode)          → nodeid_t
-        ├── .add_edge(from, to, w)
-        ├── .out_weights(id)          → std::expected<std::span<const TWeight>, string>
-        ├── .in_weights(id)           → std::expected<std::span<const TWeight>, string>
-        ├── <Ext methods ...>
-
-csr::digraph_builder<TNode>     (mutable, accumulates nodes & edges)
-        │
-        │  .compile<Ext1, Ext2, ...>()
-        ▼
-csr::digraph<TNode, Ext1...>    (immutable CSR, inherits from each Ext)
-
-csr::wdigraph_builder<TNode, TWeight>  (accumulates nodes & weighted edges)
-        │
-        │  .compile<Ext1, ...>()
-        ▼
-csr::wdigraph<TNode, TWeight, Ext1...> (immutable CSR with edge weights)
-
-# All representations satisfy the common graph interface:
-        ├── .out_edges(id)       → std::expected<std::span<const nodeid_t>, string>
-        ├── .in_edges(id)        → std::expected<std::span<const nodeid_t>, string>
-        ├── .node(id)            → const TNode&
-        ├── .count()             → std::size_t
-        ├── .is_acyclic()        → bool
-        └── <Ext methods ...>
-```
-
-Both implementations satisfy the `dagpp::directed_graph` concept:
+All implementations satisfy the `dagpp::directed_graph` concept:
 ```cpp
 template <typename T>
 concept directed_graph = requires (const T &t, dagpp::nodeid_t id)
@@ -111,14 +77,15 @@ concept wdirected_graph = directed_graph<T> && requires (const T &t, dagpp::node
 
 ## Build instructions
 
-Requires a **C++23** compliant compiler (GCC 14 / Clang 18 or newer) and **CMake 3.20+**.
+Requires a C++23 compliant compiler and CMake 3.20+.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+> NOTE: See all CMake options [here](CMakeLists.txt) or (less reliable) [here](#cmake-options)
 
-**Testing** (GoogleTest is fetched automatically):
+Testing (GoogleTest is fetched automatically):
 ```bash
 cd build && ctest --output-on-failure
 ```
@@ -180,7 +147,7 @@ int main() {
 
     // Run Dijkstra directly on the mutable graph
     const auto result = dagpp::dijkstra(graph, a);
-    std::cout << "Shortest distance a→b: " << result.distances[b] << "\n"; // 3
+    std::cout << "Shortest distance a->b: " << result.distances[b] << "\n"; // 3
 
     return 0;
 }
@@ -216,7 +183,45 @@ int main() {
     // When using CSR graphs, in order to mix in extensions, you need to pass them to the builder's `compile()` method
     // const auto graph_with_ext = builder.compile<dagpp::ext::dot_exporter>();
 
-    std::cout << "CSR graph has " << graph.count() << " nodes.\n";
+    std::cout << "CSR graph has " << graph.node_count() << " nodes.\n";
+
+    return 0;
+}
+```
+
+#### VCSR graph
+Similar to CSR, but supports node and edge insertion after compilation via a PMA-backed storage.
+```cpp
+#include <iostream>
+#include <dagpp.h>
+
+// Node data must satisfy std::semiregular ONLY for the VCSR graph
+struct Node { 
+    int id;
+    std::string name;
+};
+
+int main() {
+    dagpp::vcsr::digraph_builder<Node> builder;
+
+    // Node accumulation is mutable...
+    auto a = builder.add_node({0});
+    auto b = builder.add_node({1});
+    auto c = builder.add_node({2});
+
+    builder.add_edge(a, b);
+    builder.add_edge(b, c);
+
+    auto graph = builder.compile();
+    // When using VCSR graphs, in order to mix in extensions, you need to pass them to the builder's `compile()` method
+    // `dagpp::vcsr::default_thresholds` is a default density thresholds policy, following the constraints of the
+    // concept `dagpp::vcsr::density_policy`, which comes first before extension types, and is a basic C-style struct.
+    // auto graph_with_ext = builder.compile<dagpp::vcsr::default_thresholds, dagpp::ext::dot_exporter>();
+    
+    // ... even after graph compilation
+    graph.add_node({3, "Bob"});
+
+    std::cout << "VCSR graph has " << graph.node_count() << " nodes.\n";
 
     return 0;
 }
@@ -388,10 +393,7 @@ int main() {
 Provide as many extensions as you like - they are all mixed in simultaneously:
 
 ```cpp
-dagpp::digraph<Node, json_exporter, dagpp::ext::dot_exporter> graph;
-// OR
-const auto csr_graph = builder.compile<json_exporter, dagpp::ext::dot_exporter>();
-
+const auto graph = builder.compile<json_exporter, dagpp::ext::dot_exporter>();
 
 graph.export_json(json_out);
 graph.to_dot([](std::size_t i, const Node& n) { ... }, dot_out);
@@ -414,7 +416,7 @@ graph.to_dot([](std::size_t i, const Node& n) { ... }, dot_out);
 | `in_edges(nodeid_t id)`                     | `std::expected<std::span<const nodeid_t>, std::string>` | Inbound neighbour ids; error if `id` is out of range  |
 | `is_acyclic()`                              | `bool`                                                  | `true` if the graph is a DAG; O(V + E)                |
 
-> **Note:** For the CSR graph, `TNode` must satisfy `std::semiregular`. SEE: https://en.cppreference.com/w/cpp/concepts/semiregular
+> NOTE: For the CSR graph, `TNode` must satisfy `std::semiregular`. SEE: https://en.cppreference.com/w/cpp/concepts/semiregular
 
 ---
 
@@ -435,7 +437,7 @@ Mutable weighted digraph. Extends `digraph` with per-edge weights on both forwar
 | `in_weights(nodeid_t id)`                              | `std::expected<std::span<const TWeight>, std::string>`  | Inbound weights; error if `id` is out of range        |
 | `is_acyclic()`                                         | `bool`                                                  | `true` if the graph is a DAG; O(V + E)                |
 
-`TWeight` must satisfy the `number` concept (`std::integral` or `std::floating_point`).
+> NOTE: `TWeight` must satisfy the `number` concept (`std::integral` or `std::floating_point`).
 
 ---
 
@@ -459,7 +461,7 @@ Mutable weighted digraph. Extends `digraph` with per-edge weights on both forwar
 | `in_edges(nodeid_t id)`  | `std::expected<std::span<const nodeid_t>, std::string>` | Inbound neighbour ids; error if `id` is out of range  |
 | `is_acyclic()`           | `bool`                                                  | `true` if the graph is a DAG; O(V + E)                |
 
-Edge spans (`std::span<const nodeid_t>`) are zero-copy views into the internal CSR arrays.
+Edge spans are non-owning views into the internal CSR arrays.
 
 ### `csr::wdigraph<TNode, TWeight, TExtension...>`
 
@@ -472,6 +474,49 @@ Similar to `csr::digraph`, but additionally provides:
 
 And `wdigraph_builder::add_edge` takes a third parameter for the `weight`.
 
+---
+
+### `vcsr::digraph_builder<TNode>`
+
+| Method                                  | Return Type                                       | Description                                                                    |
+|-----------------------------------------|---------------------------------------------------|--------------------------------------------------------------------------------|
+| `add_node(TNode)`                       | `nodeid_t`                                        | Appends a node and returns its stable id                                       |
+| `add_edge(nodeid_t from, nodeid_t to)`  | `void`                                            | Records a directed edge                                                        |
+| `reserve_nodes(size_t n)`               | `void`                                            | Pre-allocates node storage                                                     |
+| `reserve_edges(size_t n)`               | `void`                                            | Pre-allocates edge storage                                                     |
+| `compile<DensityPolicy, Ext...>()`      | `vcsr::digraph<TNode, DensityPolicy, Ext...>`     | Builds the PMA-backed mutable CSR graph                                        |
+
+### `vcsr::digraph<TNode, TDensityPolicy, TExtension...>`
+
+A mutable CSR storage format that leverages the Packed Memory Array (PMA) via a new vertex-centric strategy to store temporal graphs efficiently.
+Supports dynamic `add_node()` and `add_edge()` after compilation, with automatic implicit tree rebalancing. [Reference Implementation](https://github.com/DIR-LAB/VCSR)
+
+| Method                                      | Return Type                                             | Description                                                |
+|---------------------------------------------|---------------------------------------------------------|------------------------------------------------------------|
+| `add_node(TNode)`                           | `nodeid_t`                                              | Dynamically adds a node (triggers PMA expansion if needed) |
+| `add_edge(nodeid_t from, nodeid_t to)`      | `void`                                                  | Inserts an edge with PMA rebalancing                       |
+| `node(nodeid_t id)`                         | `const TNode&`                                          | Returns the node data at `id`                              |
+| `node_count()`                              | `std::size_t`                                           | Total number of nodes                                      |
+| `edge_count()`                              | `std::size_t`                                           | Total number of edges                                      |
+| `out_edges(nodeid_t id)`                    | `std::expected<std::span<const nodeid_t>, std::string>` | Outbound neighbour ids; error if `id` is out of range      |
+| `in_edges(nodeid_t id)`                     | `std::expected<std::span<const nodeid_t>, std::string>` | Inbound neighbour ids; error if `id` is out of range       |
+| `is_acyclic()`                              | `bool`                                                  | `true` if the graph is a DAG; O(V + E)                     |
+
+### `vcsr::wdigraph<TNode, TWeight, TDensityPolicy, TExtension...>`
+
+Weighted variant. Extends `vcsr::digraph` with per-edge weights.
+
+| Method                                                 | Return Type                                              | Description                                           |
+|--------------------------------------------------------|----------------------------------------------------------|-------------------------------------------------------|
+| `add_node(TNode)`                                      | `nodeid_t`                                               | Dynamically adds a node                               |
+| `add_edge(nodeid_t from, nodeid_t to, TWeight weight)` | `void`                                                   | Inserts a weighted edge with PMA rebalancing          |
+| `out_weights(nodeid_t id)`                             | `std::expected<std::span<const TWeight>, std::string>`   | Outbound weights; error if `id` is out of range       |
+| `in_weights(nodeid_t id)`                              | `std::expected<std::span<const TWeight>, std::string>`   | Inbound weights; error if `id` is out of range        |
+
+Uses `std::pmr::polymorphic_allocator` for all internal storage, supporting custom memory resources.
+
+---
+
 ### `topo_sort`
 
 ```cpp
@@ -480,7 +525,7 @@ constexpr std::expected<std::vector<nodeid_t>, std::string>
     dagpp::topo_sort(const TGraph& graph);
 ```
 
-Kahn's BFS-based topological sort. Returns the sorted node id sequence, or `std::unexpected{"Graph contains a cycle."}` if a cycle is detected.
+Kahn's BFS-based topological sort. Returns the sorted node id sequence, or `std::unexpected` if a cycle is detected.
 
 ---
 
@@ -524,8 +569,8 @@ constexpr void to_dot(this const TSelf& self,
 | `DAGPP_ENABLE_NO_EXCEPT`  | `ON`    | Add `-fno-exceptions` in Release mode        |
 | `DAGPP_ENABLE_NO_RTTI`    | `ON`    | Add `-fno-rtti` in Release mode              |
 | `DAGPP_HIDDEN_VISIBILITY` | `ON`    | Hide symbols by default                      |
-| `DAGPP_ENABLE_AVX10`      | `ON`    | Use AVX10.1 when not building native         |
-| `DAGPP_ENABLE_AVX2`       | `ON`    | Fall back to AVX2 when not building native   |
+| `DAGPP_ENABLE_AVX10`      | `OFF`   | Use AVX10.1 when not building native         |
+| `DAGPP_ENABLE_AVX2`       | `OFF`   | Fall back to AVX2 when not building native   |
 | `DAGPP_ENABLE_FAST_MATH`  | `OFF`   | Enable `-ffast-math` (not recommended)       |
 
 ## Benchmarks
@@ -538,7 +583,8 @@ cmake --build build --target dagpp_bench -j$(nproc)
 ./build/bench/dagpp_bench
 ```
 
-Performance is measured using the immutable `csr::digraph`/`csr::wdigraph` across different graph topologies and sizes.
+Performance is measured using `csr::digraph`/`csr::wdigraph` across different graph topologies and sizes.
+VCSR benchmarks are not included here due to higher memory consumption and resulting benchmark instability.
 
 | Benchmark                                    | Time      | CPU Time  | Iterations | Throughput |
 |----------------------------------------------|-----------|-----------|------------|------------|
@@ -655,7 +701,7 @@ Performance is measured using the immutable `csr::digraph`/`csr::wdigraph` acros
 | **`BM_DijkstraSparse_PointToPoint/1048576`** | 6.76 ms   | 6.72 ms   | 92         | 156.057M/s |
 > NOTE:
   *Hardware context: Ryzen 5 PRO 7540U, 12x 3.16 GHz CPUs, 16 MB L3 cache.
-  Built with `-O3` and Google Benchmark.*
+  Built with -O3, -march=native and Google Benchmark.*
 
 
 ## License

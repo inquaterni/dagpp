@@ -23,11 +23,14 @@ add_executable(dagpp_tests
         basic_usage.cpp
         vcsr_digraph_test.cpp
         vcsr_wdigraph_test.cpp
+        vcsr_example.cpp
+        csr_example.cpp
 )
 
 target_link_libraries(dagpp_tests
         PRIVATE dagpp GTest::gtest_main
 )
+target_include_directories(dagpp_tests PUBLIC ../include/)
 
 include(GoogleTest)
 gtest_discover_tests(dagpp_tests)

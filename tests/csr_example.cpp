@@ -1,5 +1,5 @@
 /*
- * MIT License
+* MIT License
  *
  * Copyright (c) 2026 Maksym Matskevich
  *
@@ -22,14 +22,34 @@
  * SOFTWARE.
  */
 
-#ifndef DAGPP_DAGPP_H
-#define DAGPP_DAGPP_H
+#include <iostream>
+#include <dagpp.h>
 
-#include "digraph.h"
-#include "csr.h"
-#include "vcsr.h"
-#include "pmr.h"
-#include "topo_sort.h"
-#include "dijkstra.h"
+#include "gtest/gtest.h"
 
-#endif //DAGPP_DAGPP_H
+// Node data must satisfy std::semiregular ONLY for the CSR graph
+struct Node {
+    int id;
+    std::string name;
+};
+
+TEST(csr_example_test, main) {
+    dagpp::csr::digraph_builder<Node> builder;
+
+    // Node accumulation is mutable...
+    auto a = builder.add_node({0});
+    auto b = builder.add_node({1});
+    auto c = builder.add_node({2});
+
+    builder.add_edge(a, b);
+    builder.add_edge(b, c);
+
+    // ...until compilation into an immutable graph
+    const auto graph = builder.compile();
+    // When using CSR graphs, in order to mix in extensions, you need to pass them to the builder's `compile()` method
+    // const auto graph_with_ext = builder.compile<dagpp::ext::dot_exporter>();
+
+    std::cout << "CSR graph has " << graph.node_count() << " nodes.\n";
+
+    ASSERT_EQ(graph.node_count(), 3);
+}
