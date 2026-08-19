@@ -45,6 +45,7 @@
 #include <expected>
 #include <span>
 #include <vector>
+#include <utility>
 #include "detail.h"
 
 namespace dagpp::vcsr {

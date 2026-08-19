@@ -57,10 +57,11 @@ jobs:
                   -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
                   -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
                   -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+                  -DDAGPP_BUILD_NATIVE=OFF
                   -S ${{ github.workspace }}
 
             - name: Build
-              run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+              run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --target dagpp_tests
 
             - name: Test
               working-directory: ${{ steps.strings.outputs.build-output-dir }}
