@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(DAGPP_ENABLE_LTO         "Enable LTO"                                            ON)
 option(DAGPP_BUILD_NATIVE       "Enable native build"                                   ON)
-option(DAGPP_ENABLE_AVX10       "Enable AVX10.1 instructions (if not building native)"  ON)
-option(DAGPP_ENABLE_AVX2        "Enable AVX2 instructions (if not building native)"     ON)
+option(DAGPP_ENABLE_AVX10       "Enable AVX10.1 instructions (if not building native)"  OFF)
+option(DAGPP_ENABLE_AVX2        "Enable AVX2 instructions (if not building native)"     OFF)
 option(DAGPP_STRIP_DEAD         "Enable dead code stripping"                            ON)
 option(DAGPP_HIDDEN_VISIBILITY  "Hide symbols"                                          ON)
 option(DAGPP_ENABLE_NO_EXCEPT   "Enable -fno-exception flag."                           ON)
@@ -24,11 +24,7 @@ else ()
     message(STATUS "No ccache found on the machine.")
 endif()
 
-add_library(dagpp INTERFACE
-            include/dagpp.h
-        include/vcsr.h
-        include/detail.h
-)
+add_library(dagpp INTERFACE)
 target_sources(dagpp INTERFACE
         FILE_SET HEADERS
         BASE_DIRS include
@@ -56,10 +52,12 @@ if(UNIX AND NOT APPLE)
         message(STATUS "Using Mold Linker")
         add_link_options("-fuse-ld=mold")
     else()
-        find_program(LLD_LINKER lld)
-        if(LLD_LINKER)
-            message(STATUS "Using LLD Linker")
-            add_link_options("-fuse-ld=lld")
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            find_program(LLD_LINKER lld)
+            if(LLD_LINKER)
+                message(STATUS "Using LLD Linker")
+                add_link_options("-fuse-ld=lld")
+            endif()
         endif()
     endif()
 endif()

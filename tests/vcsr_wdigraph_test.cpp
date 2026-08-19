@@ -256,23 +256,23 @@ TEST(vcsr_wdigraph_test, dynamic_rebalance_trigger) {
     dagpp::vcsr::wdigraph_builder<test_node, int> builder;
     const auto a = builder.add_node({0});
     const auto b = builder.add_node({1});
-    auto graph = builder.compile(1.0); // Very dense graph to force rebalance/resize soon
+    auto graph = builder.compile();
 
     // Add many edges to trigger insertions and potentially resize
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < 200; ++i) {
         const auto new_node = graph.add_node({i + 2});
         graph.add_edge(a, new_node, i * 10);
     }
 
     auto a_out = graph.out_edges(a);
     ASSERT_TRUE(a_out.has_value());
-    ASSERT_EQ(a_out->size(), 20);
+    ASSERT_EQ(a_out->size(), 200);
 
     auto a_out_w = graph.out_weights(a);
     ASSERT_TRUE(a_out_w.has_value());
-    ASSERT_EQ(a_out_w->size(), 20);
+    ASSERT_EQ(a_out_w->size(), 200);
 
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < 200; ++i) {
         EXPECT_EQ((*a_out_w)[i], i * 10);
     }
 }

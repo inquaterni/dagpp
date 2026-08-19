@@ -8,11 +8,9 @@
 #include "global.h"
 #include <random>
 
-static constexpr double density = 0.8;
-
 TEST(vcsr_digraph_test, empty_graph) {
     dagpp::vcsr::digraph_builder<test_node> builder;
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     EXPECT_EQ(graph.node_count(), 0);
 }
@@ -20,7 +18,7 @@ TEST(vcsr_digraph_test, empty_graph) {
 TEST(vcsr_digraph_test, single_node) {
     dagpp::vcsr::digraph_builder<test_node> builder;
     const auto id = builder.emplace_node(42);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     EXPECT_EQ(graph.node_count(), 1);
     EXPECT_EQ(graph.node(id).value, 42);
@@ -31,7 +29,7 @@ TEST(vcsr_digraph_test, multiple_nodes) {
     const auto a = builder.add_node({1});
     const auto b = builder.add_node({2});
     const auto c = builder.add_node({3});
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     EXPECT_EQ(graph.node_count(), 3);
     EXPECT_EQ(graph.node(a).value, 1);
@@ -44,7 +42,7 @@ TEST(vcsr_digraph_test, single_edge) {
     const auto a = builder.add_node({1});
     const auto b = builder.add_node({2});
     builder.add_edge(a, b);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     const auto a_out = graph.out_edges(a);
     ASSERT_TRUE(a_out.has_value());
@@ -65,7 +63,7 @@ TEST(vcsr_digraph_test, multiple_out_edges) {
     builder.add_edge(a, b);
     builder.add_edge(a, c);
     builder.add_edge(a, d);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     const auto a_out = graph.out_edges(a);
     ASSERT_TRUE(a_out.has_value());
@@ -86,7 +84,7 @@ TEST(vcsr_digraph_test, diamond_graph) {
     builder.add_edge(a, c);
     builder.add_edge(b, d);
     builder.add_edge(c, d);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     const auto a_out = graph.out_edges(a);
     ASSERT_TRUE(a_out.has_value());
@@ -117,14 +115,14 @@ TEST(vcsr_digraph_test, lvalue_add_node_and_reserve) {
     builder.emplace_node(n1);
     builder.emplace_node(n2);
     builder.add_edge(0, 1);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
     EXPECT_EQ(graph.node_count(), 2);
 }
 
 TEST(vcsr_digraph_test, out_of_bounds) {
     dagpp::vcsr::digraph_builder<test_node> builder;
     builder.add_node({1});
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     auto out = graph.out_edges(1);
     EXPECT_FALSE(out.has_value());
@@ -143,7 +141,7 @@ TEST(vcsr_digraph_test, in_edges) {
     builder.add_edge(a, b);
     builder.add_edge(a, c);
     builder.add_edge(b, c);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     auto a_in = graph.in_edges(a);
     ASSERT_TRUE(a_in.has_value());
@@ -169,7 +167,7 @@ TEST(vcsr_digraph_test, is_acyclic) {
     const auto c = b1.add_node({2});
     b1.add_edge(a, b);
     b1.add_edge(b, c);
-    const auto g1 = b1.compile(density);
+    const auto g1 = b1.compile();
     EXPECT_TRUE(g1.is_acyclic());
 
     // Cyclic
@@ -180,12 +178,12 @@ TEST(vcsr_digraph_test, is_acyclic) {
     b2.add_edge(0, 1);
     b2.add_edge(1, 2);
     b2.add_edge(2, 0);
-    const auto g2 = b2.compile(density);
+    const auto g2 = b2.compile();
     EXPECT_FALSE(g2.is_acyclic());
 
     // Empty
     dagpp::vcsr::digraph_builder<test_node> b3;
-    const auto g3 = b3.compile(density);
+    const auto g3 = b3.compile();
     EXPECT_TRUE(g3.is_acyclic());
 }
 
@@ -193,7 +191,7 @@ TEST(vcsr_digraph_test, self_loop_cyclic) {
     dagpp::vcsr::digraph_builder<test_node> builder;
     const auto a = builder.add_node({0});
     builder.add_edge(a, a);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     EXPECT_FALSE(graph.is_acyclic());
 
@@ -213,7 +211,7 @@ TEST(vcsr_digraph_test, disconnected_components) {
 
     builder.add_edge(a, b);
     builder.add_edge(c, d);
-    const auto graph = builder.compile(density);
+    const auto graph = builder.compile();
 
     EXPECT_TRUE(graph.is_acyclic());
 
@@ -234,7 +232,7 @@ TEST(vcsr_digraph_test, dynamic_add_node_fast_path) {
     builder.add_node({1});
     builder.add_node({2});
     builder.add_node({3});
-    auto graph = builder.compile(density);
+    auto graph = builder.compile();
 
     EXPECT_EQ(graph.node_count(), 3);
 
@@ -253,7 +251,7 @@ TEST(vcsr_digraph_test, dynamic_add_node_geometric_expansion) {
     builder.add_node({1});
     builder.add_node({2});
     builder.add_node({3});
-    auto graph = builder.compile(density);
+    auto graph = builder.compile();
 
     graph.emplace_node(4);
     EXPECT_EQ(graph.node_count(), 4);
@@ -279,7 +277,7 @@ TEST(vcsr_digraph_test, dynamic_add_node_with_edges_and_expansion) {
     builder.add_edge(1, 2);
     builder.add_edge(2, 0);
 
-    auto graph = builder.compile(density);
+    auto graph = builder.compile();
 
     // Add nodes until expansion happens
     graph.emplace_node(3);
@@ -373,7 +371,7 @@ TEST(vcsr_digraph_test, reserve_nodes_and_edges) {
     builder.reserve_nodes(500);
     builder.reserve_edges(1000);
     
-    auto graph = builder.compile(density);
+    auto graph = builder.compile();
     
     // Add nodes to ensure nothing was broken by reservation
     auto id1 = graph.emplace_node(10);
@@ -386,7 +384,7 @@ TEST(vcsr_digraph_test, reserve_nodes_and_edges) {
 
 TEST(vcsr_digraph_test, insert_forces_left_shift) {
     dagpp::vcsr::digraph_builder<test_node> builder;
-    auto graph = builder.compile(density);
+    auto graph = builder.compile();
     
     // We want to force a left shift in the PMA insert() method.
     // Left shifts occur when the right side of an insertion point is full
@@ -425,29 +423,29 @@ TEST(vcsr_digraph_test, insert_forces_left_shift) {
 
 TEST(vcsr_digraph_test, rebalance_wrapper_and_weighted) {
     dagpp::vcsr::digraph_builder<test_node> builder;
-    auto graph = builder.compile(0.9); // High density to easily trigger rebalance
+    auto graph = builder.compile();
     
     std::vector<std::size_t> ids;
-    for (int i = 0; i < 50; ++i) {
+    for (int i = 0; i < 200; ++i) {
         ids.push_back(graph.emplace_node(i));
     }
     
     // Adding many edges to a single node creates a localized density spike.
     // This will cause its segment to exceed `up_height` density, triggering
     // `rebalance_wrapper` and `rebalance_weighted` (and update_segment_edge_total).
-    for (int i = 0; i < 40; ++i) {
+    for (int i = 0; i < 160; ++i) {
         graph.add_edge(ids[25], ids[i]);
     }
     
     // Verify integrity
     auto out_25 = graph.out_edges(ids[25]);
     ASSERT_TRUE(out_25.has_value());
-    EXPECT_EQ(out_25->size(), 40);
+    EXPECT_EQ(out_25->size(), 160);
 }
 
 TEST(vcsr_digraph_test, node_id_consistency_across_expansion) {
     dagpp::vcsr::digraph_builder<test_node> builder;
-    auto graph = builder.compile(density);
+    auto graph = builder.compile();
 
     std::vector<std::size_t> ids;
     for (int i = 0; i < 2000; ++i) {
