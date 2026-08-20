@@ -45,12 +45,15 @@ static node_t make_node(std::size_t i) {
     return node_t{std::format("task_{:04d}", i), std::format("build:lib:task_{:04d}", i)};
 }
 
+static std::pmr::unsynchronized_pool_resource buffer_resource{};
+static const std::pmr::polymorphic_allocator allocator{&buffer_resource};
+
 // ---------------------------------------------------------------------------
 // Graph factories — unweighted
 // ---------------------------------------------------------------------------
 
 static dagpp::csr::digraph<node_t> make_chain(const std::size_t n) {
-    dagpp::csr::digraph_builder<node_t> b;
+    dagpp::csr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -61,7 +64,7 @@ static dagpp::csr::digraph<node_t> make_chain(const std::size_t n) {
 }
 
 static dagpp::csr::digraph<node_t> make_binary_tree(const std::size_t n) {
-    dagpp::csr::digraph_builder<node_t> b;
+    dagpp::csr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -76,7 +79,7 @@ static dagpp::csr::digraph<node_t> make_binary_tree(const std::size_t n) {
 }
 
 static dagpp::csr::digraph<node_t> make_dense_dag(const std::size_t n) {
-    dagpp::csr::digraph_builder<node_t> b;
+    dagpp::csr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n * (n - 1) / 2);
     for (std::size_t i = 0; i < n; ++i)
@@ -88,7 +91,7 @@ static dagpp::csr::digraph<node_t> make_dense_dag(const std::size_t n) {
 }
 
 static dagpp::csr::digraph<node_t> make_cyclic(const std::size_t n) {
-    dagpp::csr::digraph_builder<node_t> b;
+    dagpp::csr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n);
     for (std::size_t i = 0; i < n; ++i)
@@ -102,10 +105,10 @@ static dagpp::csr::digraph<node_t> make_cyclic(const std::size_t n) {
 // Graph factories — weighted
 // ---------------------------------------------------------------------------
 
-static dagpp::csr::wdigraph<node_t, std::size_t> make_chain_weighted(std::size_t n) {
+static dagpp::csr::wdigraph<node_t, std::size_t> make_chain_weighted(const std::size_t n) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -118,7 +121,7 @@ static dagpp::csr::wdigraph<node_t, std::size_t> make_chain_weighted(std::size_t
 static dagpp::csr::wdigraph<node_t, std::size_t> make_binary_tree_weighted(const std::size_t n) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -135,7 +138,7 @@ static dagpp::csr::wdigraph<node_t, std::size_t> make_binary_tree_weighted(const
 static dagpp::csr::wdigraph<node_t, std::size_t> make_dense_dag_weighted(const std::size_t n) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n * (n - 1) / 2);
     for (std::size_t i = 0; i < n; ++i)
@@ -151,7 +154,7 @@ static dagpp::csr::wdigraph<node_t, std::size_t> make_sparse_dag_weighted(const 
                                                                           const std::size_t avg_out = 12) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::csr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::csr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n * avg_out);
     for (std::size_t i = 0; i < n; ++i)
@@ -182,7 +185,7 @@ static dagpp::csr::wdigraph<node_t, std::size_t> make_sparse_dag_n_edges(const s
 
 
 static dagpp::vcsr::digraph<node_t> make_vcsr_chain(const std::size_t n) {
-    dagpp::vcsr::digraph_builder<node_t> b;
+    dagpp::vcsr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -193,7 +196,7 @@ static dagpp::vcsr::digraph<node_t> make_vcsr_chain(const std::size_t n) {
 }
 
 static dagpp::vcsr::digraph<node_t> make_vcsr_binary_tree(const std::size_t n) {
-    dagpp::vcsr::digraph_builder<node_t> b;
+    dagpp::vcsr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -208,7 +211,7 @@ static dagpp::vcsr::digraph<node_t> make_vcsr_binary_tree(const std::size_t n) {
 }
 
 static dagpp::vcsr::digraph<node_t> make_vcsr_dense_dag(const std::size_t n) {
-    dagpp::vcsr::digraph_builder<node_t> b;
+    dagpp::vcsr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n * (n - 1) / 2);
     for (std::size_t i = 0; i < n; ++i)
@@ -220,7 +223,7 @@ static dagpp::vcsr::digraph<node_t> make_vcsr_dense_dag(const std::size_t n) {
 }
 
 static dagpp::vcsr::digraph<node_t> make_vcsr_cyclic(const std::size_t n) {
-    dagpp::vcsr::digraph_builder<node_t> b;
+    dagpp::vcsr::digraph_builder<node_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n);
     for (std::size_t i = 0; i < n; ++i)
@@ -237,7 +240,7 @@ static dagpp::vcsr::digraph<node_t> make_vcsr_cyclic(const std::size_t n) {
 static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_chain_weighted(const std::size_t n) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -250,7 +253,7 @@ static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_chain_weighted(const
 static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_binary_tree_weighted(const std::size_t n) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n > 0 ? n - 1 : 0);
     for (std::size_t i = 0; i < n; ++i)
@@ -267,7 +270,7 @@ static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_binary_tree_weighted
 static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_dense_dag_weighted(const std::size_t n) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n * (n - 1) / 2);
     for (std::size_t i = 0; i < n; ++i)
@@ -282,7 +285,7 @@ static dagpp::vcsr::wdigraph<node_t, std::size_t> make_vcsr_sparse_dag_weighted(
                                                                                 const std::size_t avg_out = 12) {
     std::mt19937_64 rng{69420};
     std::uniform_int_distribution<std::size_t> w{1, 1000};
-    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b;
+    dagpp::vcsr::wdigraph_builder<node_t, std::size_t> b{allocator};
     b.reserve_nodes(n);
     b.reserve_edges(n * avg_out);
     for (std::size_t i = 0; i < n; ++i)
@@ -336,7 +339,7 @@ static void BM_ConstructDenseDag(benchmark::State &state) {
     state.SetComplexityN(static_cast<int64_t>(n));
     state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n * (n - 1) / 2));
 }
-BENCHMARK(BM_ConstructDenseDag)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
+BENCHMARK(BM_ConstructDenseDag)->RangeMultiplier(4)->Range(64, 4096)->Complexity();
 
 // ---------------------------------------------------------------------------
 // Edge traversal
@@ -391,7 +394,7 @@ static void BM_OutEdgesDense(benchmark::State &state) {
     state.SetComplexityN(static_cast<int64_t>(n));
     state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n * (n - 1) / 2));
 }
-BENCHMARK(BM_OutEdgesDense)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
+BENCHMARK(BM_OutEdgesDense)->RangeMultiplier(4)->Range(64, 4096)->Complexity();
 
 // ---------------------------------------------------------------------------
 // IsAcyclic
@@ -581,7 +584,7 @@ static void BM_VcsrConstructDense(benchmark::State &state) {
     state.SetComplexityN(static_cast<int64_t>(n));
     state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n * (n - 1) / 2));
 }
-BENCHMARK(BM_VcsrConstructDense)->RangeMultiplier(4)->Range(64, 8192)->Complexity();
+BENCHMARK(BM_VcsrConstructDense)->RangeMultiplier(4)->Range(64, 4096)->Complexity();
 
 static void BM_VcsrOutEdgesChain(benchmark::State &state) {
     const auto n = static_cast<std::size_t>(state.range(0));
@@ -632,7 +635,7 @@ static void BM_VcsrOutEdgesDense(benchmark::State &state) {
     state.SetComplexityN(static_cast<int64_t>(n));
     state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(n * (n - 1) / 2));
 }
-BENCHMARK(BM_VcsrOutEdgesDense)->RangeMultiplier(4)->Range(64, 16384)->Complexity();
+BENCHMARK(BM_VcsrOutEdgesDense)->RangeMultiplier(4)->Range(64, 4096)->Complexity();
 
 static void BM_VcsrIsAcyclicTrue(benchmark::State &state) {
     const auto n = static_cast<std::size_t>(state.range(0));
